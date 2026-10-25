@@ -19,7 +19,8 @@ export class DollRenderer {
   draw(ctx, player, scene, { drawOffsetY = -92 } = {}) {
     const playerIndex = scene.players.findIndex((candidate) => candidate.id === player.id);
     this.character = getCharacter(scene.characterIds?.[playerIndex]);
-    const pose = getCharacterPose(this.character, scene.poseIndexes?.[playerIndex] ?? scene.grandpaPoseIndex);
+    const pose = scene.customPoses?.[playerIndex]
+      ?? getCharacterPose(this.character, scene.poseIndexes?.[playerIndex] ?? scene.grandpaPoseIndex);
     const speed = Math.hypot(player.velocityX, player.velocityY);
     const stride = Math.sin(scene.time * 12.5) * Math.min(1, speed / 150);
     const isCallout = scene.combat.state === "CALLOUT" && player.role === "attacker";

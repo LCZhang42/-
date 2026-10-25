@@ -27,6 +27,7 @@ import { MatchStats } from "../game/MatchStats.js";
 import { Player } from "../game/Player.js";
 import { CanvasRenderer } from "../rendering/CanvasRenderer.js";
 import { DebugOverlay } from "../ui/DebugOverlay.js";
+import { PoseEditor } from "../ui/PoseEditor.js";
 import { GameLoop } from "./GameLoop.js";
 import { InputManager } from "./InputManager.js";
 import { StateMachine } from "./StateMachine.js";
@@ -59,6 +60,22 @@ export class Game {
     characterMirrorNote,
     characterSelectBack,
     characterSelectConfirm,
+    poseEditorOverlay,
+    poseEditorCanvas,
+    poseEditorTitle,
+    poseEditorSubtitle,
+    poseCurrentName,
+    poseEditorStatus,
+    poseJoints,
+    posePresets,
+    poseSlots,
+    poseMirror,
+    poseReset,
+    poseRandom,
+    poseSave,
+    poseDelete,
+    poseSkip,
+    poseUse,
     compatibilityNote,
     gameVersion,
     status,
@@ -136,6 +153,9 @@ export class Game {
     };
     this.characterSelectionSession = null;
     this.characterSelectionPreferences = readCharacterSelections(globalThis.localStorage);
+    this.pendingMatch = null;
+    this.poseEditQueue = [];
+    this.activePosePlayerIndex = null;
     this.status = status;
     this.pauseOverlay = pauseOverlay;
     this.elapsedRealTime = 0;
@@ -152,6 +172,7 @@ export class Game {
     this.characterArtMode = "doll";
     this.characterIds = ["strolling-grandpa", "dance-auntie"];
     this.poseIndexes = [0, 1];
+    this.customPoses = [null, null];
     this.characterAssets = new CharacterAssetLoader();
     this.characterAssets.preload(this.characterIds);
     this.p2AiBadge = p2AiBadge;
@@ -188,6 +209,26 @@ export class Game {
       lowEffects: lowEffectsEnabled,
       flashes: flashesEnabled,
     };
+    this.poseEditor = new PoseEditor({
+      overlay: poseEditorOverlay,
+      canvas: poseEditorCanvas,
+      title: poseEditorTitle,
+      subtitle: poseEditorSubtitle,
+      poseName: poseCurrentName,
+      status: poseEditorStatus,
+      joints: poseJoints,
+      presets: posePresets,
+      slots: poseSlots,
+      mirror: poseMirror,
+      reset: poseReset,
+      random: poseRandom,
+      save: poseSave,
+      remove: poseDelete,
+      skip: poseSkip,
+      use: poseUse,
+    }, {
+      onComplete: (result) => this.finishPoseEditing(result),
+    });
 
     this.stateMachine = new StateMachine(GAME_STATES.running, {
       [GAME_STATES.running]: [GAME_STATES.paused],
@@ -282,6 +323,7 @@ export class Game {
 
     if (this.input.wasPressed(SYSTEM_KEYS.cyclePose)) {
       this.poseIndexes[0] = (this.poseIndexes[0] + 1) % 3;
+      this.customPoses[0] = null;
       const poseNames = ["门口放空", "小区监察", "铁丝发癫"];
       this.status.textContent = `${getCharacter(this.characterIds[0]).name} Pose：${poseNames[this.poseIndexes[0]]}`;
       this.statusResetAt = performance.now() + 1600;
@@ -502,6 +544,7 @@ export class Game {
       characterArtMode: this.characterArtMode,
       characterIds: [...this.characterIds],
       poseIndexes: [...this.poseIndexes],
+      customPoses: this.customPoses.map((pose) => pose ? { ...pose } : null),
       grandpaPoseIndex: this.poseIndexes[0],
       time: this.loop.elapsed,
     });
@@ -514,6 +557,7 @@ export class Game {
     const next = CHARACTER_CATALOG[(currentIndex + 1) % CHARACTER_CATALOG.length];
     this.characterIds[playerIndex] = next.id;
     this.poseIndexes[playerIndex] = next.visual.outfit === "floral" ? 2 : playerIndex;
+    this.customPoses[playerIndex] = null;
     this.characterAssets.load(next.id);
     this.status.textContent = `P${playerIndex + 1} 换人：${next.name}`;
     this.statusResetAt = performance.now() + 1600;
@@ -580,6 +624,9 @@ export class Game {
       savedIds: this.characterSelectionPreferences[normalizedMode],
     });
     this.menuOpen = true;
+    this.pendingMatch = null;
+    this.poseEditQueue = [];
+    this.poseEditor.close();
     this.startMenu.overlay.hidden = true;
     this.characterSelect.overlay.hidden = false;
     this.pauseOverlay.hidden = true;
@@ -666,12 +713,41 @@ export class Game {
     }
     this.characterIds = result.selections;
     this.poseIndexes = [0, 0];
+    this.customPoses = [null, null];
     this.characterAssets.preload(this.characterIds);
     this.characterSelectionPreferences[session.mode] = [...result.selections];
     writeCharacterSelections(globalThis.localStorage, this.characterSelectionPreferences);
     this.characterSelect.overlay.hidden = true;
     this.characterSelectionSession = null;
-    this.beginMatch(session.mode);
+    this.beginPoseEditing(session.mode);
+  }
+
+  beginPoseEditing(mode) {
+    this.pendingMatch = { mode };
+    this.poseEditQueue = mode === "local" ? [0, 1] : [0];
+    this.openNextPoseEditor();
+  }
+
+  openNextPoseEditor() {
+    if (this.poseEditQueue.length === 0) {
+      const mode = this.pendingMatch?.mode ?? "ai";
+      this.pendingMatch = null;
+      this.activePosePlayerIndex = null;
+      this.beginMatch(mode);
+      return;
+    }
+    this.activePosePlayerIndex = this.poseEditQueue.shift();
+    this.poseEditor.open({
+      characterId: this.characterIds[this.activePosePlayerIndex],
+      playerIndex: this.activePosePlayerIndex,
+    });
+    this.status.textContent = `P${this.activePosePlayerIndex + 1} 正在摆 Pose`;
+  }
+
+  finishPoseEditing({ pose }) {
+    if (this.activePosePlayerIndex === null) return;
+    this.customPoses[this.activePosePlayerIndex] = pose ? { ...pose } : null;
+    this.openNextPoseEditor();
   }
 
   beginMatch(mode = "ai") {
@@ -703,6 +779,10 @@ export class Game {
     this.outcomeOverlay.hidden = true;
     this.characterSelect.overlay.hidden = true;
     this.characterSelectionSession = null;
+    this.poseEditor.close();
+    this.pendingMatch = null;
+    this.poseEditQueue = [];
+    this.activePosePlayerIndex = null;
     this.startMenu.overlay.hidden = false;
     this.togglePause(true);
     this.pauseOverlay.hidden = true;

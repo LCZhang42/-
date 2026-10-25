@@ -563,6 +563,7 @@ kbd small {
 .boot-overlay,
 .start-overlay,
 .character-select-overlay,
+.pose-editor-overlay,
 .tutorial-overlay,
 .settings-overlay {
   position: absolute;
@@ -596,9 +597,18 @@ kbd small {
     rgb(5 7 10 / 96%);
 }
 
+.pose-editor-overlay {
+  z-index: 58;
+  padding: 2%;
+  background:
+    radial-gradient(circle at 30% 45%, rgb(255 113 77 / 12%), transparent 34%),
+    linear-gradient(120deg, rgb(6 7 10 / 97%), rgb(15 18 23 / 96%));
+}
+
 .boot-overlay[hidden],
 .start-overlay[hidden],
 .character-select-overlay[hidden],
+.pose-editor-overlay[hidden],
 .tutorial-overlay[hidden],
 .settings-overlay[hidden] {
   display: none;
@@ -1075,6 +1085,242 @@ kbd small {
   color: #17130b;
 }
 
+.pose-editor-card {
+  display: grid;
+  width: min(94%, 1180px);
+  max-height: 95%;
+  box-sizing: border-box;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: clamp(8px, 1vw, 15px);
+  padding: clamp(13px, 1.8vw, 28px);
+  overflow: hidden;
+  border: 1px solid rgb(255 225 129 / 23%);
+  border-radius: clamp(13px, 1.5vw, 22px);
+  background: linear-gradient(135deg, rgb(47 27 22 / 97%), rgb(9 12 17 / 98%) 52%);
+  box-shadow: 0 32px 110px rgb(0 0 0 / 76%);
+}
+
+.pose-editor-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1em;
+}
+
+.pose-editor-heading > div:first-child {
+  display: grid;
+  gap: 0.08em;
+}
+
+.pose-editor-heading span,
+.pose-current-name small {
+  color: #9f988e;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: clamp(7px, 0.7vw, 11px);
+  font-weight: 800;
+  letter-spacing: 0.15em;
+}
+
+.pose-editor-heading strong {
+  color: #ffe27a;
+  font-family: "STKaiti", "KaiTi", serif;
+  font-size: clamp(24px, 3vw, 46px);
+}
+
+.pose-editor-heading p {
+  margin: 0;
+  color: #aaa298;
+  font-size: clamp(8px, 0.8vw, 13px);
+}
+
+.pose-current-name {
+  display: grid;
+  min-width: 150px;
+  padding: 0.65em 0.9em;
+  border: 1px dashed rgb(255 255 255 / 16%);
+  border-radius: 9px;
+  background: rgb(255 255 255 / 4%);
+  text-align: right;
+}
+
+.pose-current-name b {
+  color: #e9dfcf;
+  font-size: clamp(10px, 1vw, 16px);
+}
+
+.pose-editor-body {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: minmax(280px, 0.88fr) minmax(360px, 1.12fr);
+  gap: clamp(8px, 1vw, 15px);
+}
+
+.pose-canvas-wrap {
+  position: relative;
+  display: grid;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 13px;
+  background: #080a0e;
+}
+
+#pose-editor-canvas {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  outline: none;
+  touch-action: none;
+}
+
+#pose-editor-canvas:focus-visible {
+  box-shadow: inset 0 0 0 3px #ffe277;
+}
+
+#pose-editor-status {
+  position: absolute;
+  right: 3%;
+  bottom: 3%;
+  left: 3%;
+  margin: 0;
+  padding: 0.55em 0.8em;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 8px;
+  background: rgb(5 7 10 / 78%);
+  color: #c5bdb1;
+  font-size: clamp(7px, 0.72vw, 11px);
+  text-align: center;
+  pointer-events: none;
+}
+
+.pose-tools {
+  display: grid;
+  min-height: 0;
+  gap: clamp(6px, 0.7vw, 10px);
+  overflow: auto;
+}
+
+.pose-tools section {
+  display: grid;
+  gap: 0.45em;
+  padding: clamp(8px, 0.85vw, 13px);
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 11px;
+  background: rgb(255 255 255 / 3%);
+}
+
+.pose-tools h3 {
+  margin: 0;
+  color: #e7d8b7;
+  font-size: clamp(9px, 0.85vw, 13px);
+}
+
+.pose-tools section > small {
+  color: #868178;
+  font-size: clamp(7px, 0.65vw, 10px);
+}
+
+.pose-joints {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.pose-joints button,
+.pose-presets button,
+.pose-slots button,
+.pose-slot-actions button,
+.pose-transform-actions button {
+  min-width: 0;
+  border: 1px solid rgb(255 255 255 / 13%);
+  border-radius: 7px;
+  background: #22252b;
+  color: #cbc5bb;
+  font-size: clamp(7px, 0.7vw, 11px);
+  font-weight: 720;
+}
+
+.pose-joints button {
+  min-height: clamp(25px, 2.4vw, 34px);
+  padding: 0.35em 0.4em;
+}
+
+.pose-joints button.is-selected,
+.pose-presets button:hover,
+.pose-slots button.is-selected {
+  border-color: #ffe277;
+  background: #3b3421;
+  color: #fff0bd;
+}
+
+.pose-presets,
+.pose-slots {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+
+.pose-presets button,
+.pose-slots button {
+  display: grid;
+  min-height: clamp(34px, 3.2vw, 46px);
+  grid-template-columns: auto 1fr;
+  padding: 0.45em 0.55em;
+  align-items: center;
+  gap: 0.45em;
+  text-align: left;
+}
+
+.pose-presets b,
+.pose-slots b {
+  display: grid;
+  width: 1.7em;
+  height: 1.7em;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 8%);
+  color: #ffe277;
+  place-items: center;
+}
+
+.pose-presets span,
+.pose-slots span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pose-slot-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+
+.pose-slot-actions button {
+  min-height: 28px;
+  padding: 0.4em 0.55em;
+}
+
+.pose-slot-actions button:disabled {
+  opacity: 0.38;
+}
+
+.pose-transform-actions {
+  display: grid;
+  grid-template-columns: repeat(3, auto) 1fr auto minmax(170px, 0.3fr);
+  gap: 0.55em;
+}
+
+.pose-transform-actions button {
+  min-height: clamp(32px, 3.2vw, 46px);
+  padding: 0.55em 0.9em;
+}
+
+.pose-transform-actions .primary-action {
+  border-color: #ffe277;
+  background: #ffe277;
+  color: #17130b;
+}
+
 .tutorial-card,
 .settings-card {
   display: grid;
@@ -1410,6 +1656,62 @@ kbd small {
 
   .character-select-overlay {
     padding: 1%;
+  }
+
+  .pose-editor-overlay {
+    padding: 1%;
+  }
+
+  .pose-editor-card {
+    width: 97%;
+    max-height: 97%;
+    gap: 5px;
+    padding: 8px 10px;
+  }
+
+  .pose-editor-heading strong {
+    font-size: clamp(20px, 3.5vw, 32px);
+  }
+
+  .pose-editor-heading p,
+  .pose-current-name small {
+    display: none;
+  }
+
+  .pose-editor-body {
+    grid-template-columns: minmax(185px, 0.8fr) minmax(260px, 1.2fr);
+    gap: 5px;
+  }
+
+  .pose-tools {
+    gap: 4px;
+  }
+
+  .pose-tools section {
+    gap: 3px;
+    padding: 5px 7px;
+  }
+
+  .pose-tools section > small {
+    display: none;
+  }
+
+  .pose-joints button {
+    min-height: 21px;
+  }
+
+  .pose-presets button,
+  .pose-slots button {
+    min-height: 27px;
+  }
+
+  .pose-transform-actions {
+    grid-template-columns: repeat(3, auto) 1fr auto minmax(125px, 0.3fr);
+  }
+
+  .pose-transform-actions button {
+    min-height: 28px;
+    padding: 0.4em 0.65em;
   }
 
   .character-select-card {

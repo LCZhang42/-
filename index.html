@@ -8,7 +8,7 @@
       name="description"
       content="《寿数回战》浏览器双人反应游戏原型"
     />
-    <title>寿数回战 · 美术扩展 A2</title>
+    <title>寿数回战 · 美术扩展 A3</title>
     <link rel="modulepreload" href="./src/core/Game.js" />
     <link rel="stylesheet" href="./css/game.css" />
   </head>
@@ -27,7 +27,7 @@
             <span class="eyebrow">BROWSER PROTOTYPE</span>
             <h1>寿数回战</h1>
           </div>
-          <div class="status-pill" id="game-status">美术扩展 A2 · 选角界面</div>
+          <div class="status-pill" id="game-status">美术扩展 A3 · Pose 编辑器</div>
         </header>
 
         <section class="match-hud" aria-label="对局状态">
@@ -100,10 +100,10 @@
 
         <div class="start-overlay" id="start-overlay" hidden>
           <section class="start-card" aria-labelledby="start-title">
-            <span class="menu-kicker">SOLO & LOCAL DUEL · <b id="game-version">v0.11.0</b></span>
+            <span class="menu-kicker">SOLO & LOCAL DUEL · <b id="game-version">v0.12.0</b></span>
             <h2 id="start-title">寿数回战</h2>
             <p>一个人也能开打。挑战会走位、会回寿、偶尔也会犯错的青寿 AI，或者邀请朋友同键盘对战。</p>
-            <div class="art-proof art-proof--roster" aria-label="A2 老鼠干角色阵容">
+            <div class="art-proof art-proof--roster" aria-label="A3 老鼠干角色阵容与 Pose 编辑">
               <div class="roster-strip" aria-hidden="true">
                 <span style="--swatch:#d7d0bd">爷</span>
                 <span style="--swatch:#6d735b">叔</span>
@@ -111,7 +111,7 @@
                 <span style="--swatch:#b57a28">姐</span>
                 <span style="--swatch:#817d77">青</span>
               </div>
-              <p><b>A2 五人选角堂</b><span>选角色、看表情、定 Pose，再把这具歪铁丝架子送进战场。</span></p>
+              <p><b>A3 老鼠干造型所</b><span>选角色、掰关节、存 Pose，再把这具歪铁丝架子送进战场。</span></p>
             </div>
             <div class="menu-actions">
               <button type="button" class="primary-action" id="start-ai">单人 vs AI</button>
@@ -155,6 +155,55 @@
             <div class="select-actions">
               <button type="button" id="character-select-back">返回标题</button>
               <button type="button" class="primary-action" id="character-select-confirm">确认角色并开局</button>
+            </div>
+          </section>
+        </div>
+
+        <div class="pose-editor-overlay" id="pose-editor-overlay" hidden>
+          <section class="pose-editor-card" aria-labelledby="pose-editor-title">
+            <header class="pose-editor-heading">
+              <div>
+                <span>WIRE POSE WORKSHOP</span>
+                <strong id="pose-editor-title">P1 · 遛弯大爷</strong>
+                <p id="pose-editor-subtitle">先把铁丝掰成你喜欢的样子</p>
+              </div>
+              <div class="pose-current-name">
+                <small>当前姿势</small>
+                <b id="pose-current-name">门口放空</b>
+              </div>
+            </header>
+            <div class="pose-editor-body">
+              <div class="pose-canvas-wrap">
+                <canvas id="pose-editor-canvas" width="420" height="420" tabindex="0" aria-label="可拖动关节的角色 Pose 预览"></canvas>
+                <p id="pose-editor-status" aria-live="polite">拖动发光关节，或选中关节后按方向键微调</p>
+              </div>
+              <aside class="pose-tools">
+                <section>
+                  <h3>1 · 选关节</h3>
+                  <div class="pose-joints" id="pose-joints"></div>
+                  <small>方向键微调 · Shift + 方向键精细微调</small>
+                </section>
+                <section>
+                  <h3>2 · 安全预设</h3>
+                  <div class="pose-presets" id="pose-presets"></div>
+                </section>
+                <section>
+                  <h3>3 · 三个本地槽位</h3>
+                  <div class="pose-slots" id="pose-slots"></div>
+                  <div class="pose-slot-actions">
+                    <button type="button" id="pose-save">保存到此槽位</button>
+                    <button type="button" id="pose-delete">删除槽位</button>
+                  </div>
+                </section>
+              </aside>
+            </div>
+            <div class="pose-transform-actions">
+              <button type="button" id="pose-mirror">左右镜像</button>
+              <button type="button" id="pose-reset">重置</button>
+              <button type="button" id="pose-random">随机发癫</button>
+              <span></span>
+              <button type="button" id="pose-skip">跳过编辑</button>
+              <button type="button" class="primary-action" id="pose-use">使用此 Pose</button>
             </div>
           </section>
         </div>
