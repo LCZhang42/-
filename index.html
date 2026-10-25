@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#111317" />
+    <meta
+      name="description"
+      content="《寿数回战》浏览器双人反应游戏原型"
+    />
+    <title>寿数回战 · 美术扩展 A2</title>
+    <link rel="modulepreload" href="./src/core/Game.js" />
+    <link rel="stylesheet" href="./css/game.css" />
+  </head>
+  <body>
+    <main class="app-shell" aria-label="寿数回战游戏原型">
+      <section class="game-stage" id="game-stage">
+        <canvas
+          id="game-canvas"
+          width="1280"
+          height="720"
+          aria-label="寿数回战游戏画面"
+        ></canvas>
+
+        <header class="top-hud" aria-label="游戏状态">
+          <div class="brand-block">
+            <span class="eyebrow">BROWSER PROTOTYPE</span>
+            <h1>寿数回战</h1>
+          </div>
+          <div class="status-pill" id="game-status">美术扩展 A2 · 选角界面</div>
+        </header>
+
+        <section class="match-hud" aria-label="对局状态">
+          <div class="life-meter life-meter--one" data-life-player="P1">
+            <strong>60 年</strong><i></i>
+          </div>
+          <div class="round-timer"><strong id="round-timer">75</strong><span>秒</span></div>
+          <div class="life-meter life-meter--two" data-life-player="P2">
+            <strong>60 年</strong><i></i>
+          </div>
+        </section>
+
+        <section class="player-hud player-hud--one" aria-label="玩家一按键">
+          <div class="player-label"><span class="is-attacker" data-role-player="P1">P1 · 攻</span> 朱寿</div>
+          <div class="key-row" aria-label="玩家一移动键">
+            <kbd data-key-code="KeyW">W</kbd>
+            <kbd data-key-code="KeyA">A</kbd>
+            <kbd data-key-code="KeyS">S</kbd>
+            <kbd data-key-code="KeyD">D</kbd>
+          </div>
+          <div class="key-row key-row--actions">
+            <kbd data-key-code="KeyF">F <small>按住寿</small></kbd>
+            <kbd data-key-code="KeyG">G <small>牛</small></kbd>
+            <kbd data-key-code="ShiftLeft">L⇧ <small>冲刺</small></kbd>
+          </div>
+          <div class="dash-meter" data-dash-player="P1">
+            <i></i><span>冲刺就绪</span>
+          </div>
+          <div class="bull-meter" data-bull-player="P1">
+            <i></i><span>牛气 0%</span>
+          </div>
+        </section>
+
+        <section class="player-hud player-hud--two" aria-label="玩家二按键">
+          <div class="player-label"><span data-role-player="P2">P2 · 守</span> 青寿 <small class="ai-badge" id="p2-ai-badge" hidden>AI</small></div>
+          <div class="key-row" aria-label="玩家二移动键">
+            <kbd data-key-code="ArrowUp">↑</kbd>
+            <kbd data-key-code="ArrowLeft">←</kbd>
+            <kbd data-key-code="ArrowDown">↓</kbd>
+            <kbd data-key-code="ArrowRight">→</kbd>
+          </div>
+          <div class="key-row key-row--actions">
+            <kbd data-key-code="KeyK">K <small>寿</small></kbd>
+            <kbd data-key-code="KeyL">L <small>牛</small></kbd>
+            <kbd data-key-code="ShiftRight">R⇧ <small>冲刺</small></kbd>
+          </div>
+          <div class="dash-meter" data-dash-player="P2">
+            <i></i><span>冲刺就绪</span>
+          </div>
+          <div class="bull-meter" data-bull-player="P2">
+            <i></i><span>牛气 0%</span>
+          </div>
+        </section>
+
+        <div class="lock-hud" id="lock-hud" aria-live="polite">
+          <div class="lock-gauge"><i></i></div>
+          <strong>P1 攻方</strong>
+          <span>按住 F 聚焦 P2</span>
+        </div>
+
+        <div class="boot-overlay" id="boot-overlay" aria-live="polite">
+          <section class="boot-card">
+            <span>LOADING</span>
+            <strong id="boot-title">正在唤醒寿数世界…</strong>
+            <div class="boot-progress" aria-hidden="true"><i id="boot-progress"></i></div>
+            <p id="boot-detail">检查浏览器能力并加载游戏规则</p>
+            <button type="button" id="boot-reload" hidden>重新加载</button>
+          </section>
+        </div>
+
+        <div class="start-overlay" id="start-overlay" hidden>
+          <section class="start-card" aria-labelledby="start-title">
+            <span class="menu-kicker">SOLO & LOCAL DUEL · <b id="game-version">v0.11.0</b></span>
+            <h2 id="start-title">寿数回战</h2>
+            <p>一个人也能开打。挑战会走位、会回寿、偶尔也会犯错的青寿 AI，或者邀请朋友同键盘对战。</p>
+            <div class="art-proof art-proof--roster" aria-label="A2 老鼠干角色阵容">
+              <div class="roster-strip" aria-hidden="true">
+                <span style="--swatch:#d7d0bd">爷</span>
+                <span style="--swatch:#6d735b">叔</span>
+                <span style="--swatch:#b92f69">妈</span>
+                <span style="--swatch:#b57a28">姐</span>
+                <span style="--swatch:#817d77">青</span>
+              </div>
+              <p><b>A2 五人选角堂</b><span>选角色、看表情、定 Pose，再把这具歪铁丝架子送进战场。</span></p>
+            </div>
+            <div class="menu-actions">
+              <button type="button" class="primary-action" id="start-ai">单人 vs AI</button>
+              <button type="button" id="start-local">本地双人</button>
+              <button type="button" id="start-tutorial">玩法教学</button>
+              <button type="button" id="start-settings">游戏设置</button>
+              <button type="button" id="start-fullscreen">进入全屏</button>
+            </div>
+            <div class="menu-controls">
+              <span><b>P1</b> WASD · F 寿 · G 牛 · 左 Shift 冲刺</span>
+              <span><b>P2</b> 方向键 · K 寿 · L 牛 · 右 Shift 冲刺</span>
+            </div>
+            <p class="compatibility-note" id="compatibility-note">正在检查兼容性…</p>
+          </section>
+        </div>
+
+        <div class="character-select-overlay" id="character-select-overlay" hidden>
+          <section class="character-select-card" aria-labelledby="character-select-title">
+            <header class="select-heading">
+              <div>
+                <span id="character-select-mode">单人模式</span>
+                <strong id="character-select-title">P1 选一具老鼠干</strong>
+              </div>
+              <p id="character-select-step">1 / 1 · AI 会从剩余角色中抽选</p>
+            </header>
+            <div class="character-roster" id="character-roster" role="list" aria-label="可选角色"></div>
+            <div class="character-showcase">
+              <div class="portrait-frame">
+                <img id="character-select-image" alt="" />
+                <span id="character-select-pose">默认 Pose · 门口放空</span>
+              </div>
+              <div class="character-copy">
+                <small>当前选择</small>
+                <strong id="character-select-name">遛弯大爷</strong>
+                <b id="character-select-tagline">看透小区一切的门口哲学家</b>
+                <p id="character-select-bio"></p>
+                <div class="expression-preview" id="character-expression-preview" aria-label="表情预览"></div>
+                <p class="mirror-note" id="character-mirror-note">角色只改变外观，不改变速度、范围或伤害。</p>
+              </div>
+            </div>
+            <div class="select-actions">
+              <button type="button" id="character-select-back">返回标题</button>
+              <button type="button" class="primary-action" id="character-select-confirm">确认角色并开局</button>
+            </div>
+          </section>
+        </div>
+
+        <div class="tutorial-overlay" id="tutorial-overlay" hidden>
+          <section class="tutorial-card" aria-labelledby="tutorial-title">
+            <span id="tutorial-step">教学 1 / 5</span>
+            <strong id="tutorial-title">先认清自己</strong>
+            <div class="tutorial-visual" id="tutorial-visual" aria-hidden="true"></div>
+            <p id="tutorial-text"></p>
+            <div class="overlay-actions">
+              <button type="button" id="tutorial-skip">跳过</button>
+              <button type="button" class="primary-action" id="tutorial-next">下一步</button>
+            </div>
+          </section>
+        </div>
+
+        <div class="settings-overlay" id="settings-overlay" hidden>
+          <section class="settings-card" aria-labelledby="settings-title">
+            <span>辅助与平衡</span>
+            <strong id="settings-title">游戏设置</strong>
+            <label>
+              <span>反应难度</span>
+              <select id="difficulty-select">
+                <option value="relaxed">宽松 · 0.68 秒</option>
+                <option value="standard" selected>标准 · 0.50 秒</option>
+                <option value="expert">高手 · 0.34 秒</option>
+              </select>
+            </label>
+            <label>
+              <span>AI 难度</span>
+              <select id="ai-difficulty-select">
+                <option value="rookie">新手 · 会迟疑和答错</option>
+                <option value="balanced" selected>普通 · 有攻有守</option>
+                <option value="master">高手 · 接近完美时机</option>
+              </select>
+            </label>
+            <label>
+              <span>总音量</span>
+              <input id="master-volume" type="range" min="0" max="1" step="0.05" value="0.8" />
+            </label>
+            <label>
+              <span>音效音量</span>
+              <input id="effects-volume" type="range" min="0" max="1" step="0.05" value="0.8" />
+            </label>
+            <label>
+              <span>口令音量</span>
+              <input id="voice-volume" type="range" min="0" max="1" step="0.05" value="0.8" />
+            </label>
+            <div class="settings-checks">
+              <label><input id="voice-enabled" type="checkbox" checked /> 中文口令播报</label>
+              <label><input id="subtitles-enabled" type="checkbox" checked /> 字幕提示</label>
+              <label><input id="low-effects-enabled" type="checkbox" /> 减弱震屏与粒子</label>
+              <label><input id="flashes-enabled" type="checkbox" checked /> 命中闪光</label>
+            </div>
+            <div class="overlay-actions">
+              <button type="button" id="settings-tutorial">重新教学</button>
+              <button type="button" class="primary-action" id="settings-close">完成</button>
+            </div>
+          </section>
+        </div>
+
+        <div class="pause-overlay" id="pause-overlay" hidden>
+          <div class="pause-card">
+            <span>时间冻结</span>
+            <strong>暂停</strong>
+            <small>按 Esc 继续，或者选择：</small>
+            <div class="pause-actions">
+              <button type="button" class="primary-action" id="pause-resume">继续对战</button>
+              <button type="button" id="pause-restart">重新开局</button>
+              <button type="button" id="pause-settings">游戏设置</button>
+              <button type="button" id="pause-fullscreen">切换全屏</button>
+              <button type="button" id="pause-menu">返回标题</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="outcome-overlay" id="outcome-overlay" hidden>
+          <div class="outcome-card">
+            <span>本局终了</span>
+            <strong id="outcome-title">朱寿 胜</strong>
+            <p id="outcome-detail">60 年 · 0 年</p>
+            <small>按 R 再来一局</small>
+          </div>
+        </div>
+
+        <aside class="debug-panel" id="debug-panel" aria-label="调试面板">
+          <div class="debug-heading">
+            <span>DEBUG</span>
+            <kbd>F3</kbd>
+          </div>
+          <dl id="debug-values"></dl>
+        </aside>
+
+        <footer class="footer-hint">
+          <span><kbd>Esc</kbd> 暂停</span>
+          <span><kbd>F3</kbd> 调试面板</span>
+          <span><kbd>R</kbd> 重开</span>
+          <span><kbd>B</kbd> 测试牛符</span>
+          <span><kbd>V</kbd> 低配特效</span>
+          <span><kbd>T</kbd> 教学</span>
+          <span><kbd>O</kbd> 设置</span>
+          <span><kbd>X</kbd> 全屏</span>
+          <span><kbd>P</kbd> 换 Pose</span>
+          <span><kbd>C</kbd> P1 换人</span>
+          <span><kbd>N</kbd> P2 换人</span>
+          <span><kbd>M</kbd> 新旧美术</span>
+        </footer>
+      </section>
+    </main>
+
+    <noscript>此原型需要启用 JavaScript。</noscript>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

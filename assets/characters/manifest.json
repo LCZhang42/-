@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-25",
+  "generator": "OpenAI built-in imagegen",
+  "disclosure": "Character concept portraits were created with generative AI and then downscaled for browser delivery. Combat puppets are rendered procedurally from original character definitions.",
+  "styleAnchor": "Extremely under-stuffed handmade cloth-and-wire doll; flattened printed face; long uneven fabric-strip limbs; crooked visible seams; amateur bootleg craft finish.",
+  "expressions": ["neutral", "focus", "shock", "shout", "triumph", "hurt"],
+  "characters": [
+    { "id": "strolling-grandpa", "slug": "grandpa", "name": "遛弯大爷", "portrait": "./grandpa/portrait.png", "source": "../../art-source/characters/grandpa/concept-v2.png", "revision": "A0-v2 approved style anchor" },
+    { "id": "thermos-uncle", "slug": "uncle", "name": "保温杯大叔", "portrait": "./uncle/portrait.png", "source": "../../art-source/characters/uncle/concept.png", "revision": "A1 initial generation" },
+    { "id": "dance-auntie", "slug": "auntie", "name": "广场舞大妈", "portrait": "./auntie/portrait.png", "source": "../../art-source/characters/auntie/concept.png", "revision": "A1 initial generation" },
+    { "id": "market-sister", "slug": "sister", "name": "菜市场大姐", "portrait": "./sister/portrait.png", "source": "../../art-source/characters/sister/concept.png", "revision": "A1 initial generation" },
+    { "id": "flat-youth", "slug": "slacker", "name": "躺平青年", "portrait": "./slacker/portrait.png", "source": "../../art-source/characters/slacker/concept.png", "revision": "A1 initial generation" }
+  ]
+}
