@@ -1,6 +1,7 @@
 node_modules/
 dist/
 art-source/*proof*.png
+art-source/a2-character-select.png
 
 *.log
 .DS_Store
