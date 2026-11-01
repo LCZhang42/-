@@ -18,8 +18,8 @@ export {
 
 export const GAME_CONFIG = Object.freeze({
   title: "寿数回战",
-  version: "0.19.0",
-  stageLabel: "联机 N3 · 服务器权威战斗",
+  version: "0.22.0",
+  stageLabel: "联机 N6 · 断线重连",
   shareApiBase: "",
   logicalWidth: 1280,
   logicalHeight: 720,

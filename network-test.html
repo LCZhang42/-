@@ -3,21 +3,42 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>寿数回战 · N3 权威战斗测试</title>
+    <title>寿数回战 · N6 断线重连</title>
     <link rel="stylesheet" href="./css/network-test.css" />
   </head>
   <body data-connection="idle">
     <main>
       <header>
-        <p class="eyebrow">SERVER AUTHORITATIVE N3</p>
-        <h1>权威战斗同步测试</h1>
-        <p>服务器统一裁定移动、冲刺、锁定、寿来／牛来、回应、伤害和攻守交换；客户端只发送按键输入。</p>
+        <p class="eyebrow">PRIVATE ROOM N6</p>
+        <h1>创建房间，邀请朋友开打</h1>
+        <p>创建私人房间后复制四位房间码；短暂断网或刷新会保留原座位并暂停对局，返回后从服务器权威状态继续。</p>
         <p>移动：WASD／方向键；寿：F／K；牛：G／L；冲刺：左右 Shift。</p>
       </header>
-      <section class="controls" aria-label="连接设置">
-        <label>服务器 <input id="server-url" value="ws://127.0.0.1:2567" /></label>
-        <button id="connect" type="button">加入测试房间</button>
-        <button id="leave" type="button" disabled>离开</button>
+      <section id="lobby-panel" class="lobby-card" aria-label="私人房间大厅">
+        <div class="controls">
+          <label>服务器 <input id="server-url" value="ws://127.0.0.1:2567" /></label>
+          <button id="connect" type="button">创建私人房间</button>
+        </div>
+        <div class="controls join-controls">
+          <label>房间码 <input id="room-code-input" maxlength="7" autocomplete="off" placeholder="例如 7KSH" /></label>
+          <button id="join-room" type="button">加入房间</button>
+        </div>
+        <p id="lobby-error" class="error-card" role="alert" hidden></p>
+      </section>
+      <section id="room-panel" class="room-card" aria-label="房间状态" hidden>
+        <div>
+          <span>房间码</span>
+          <strong id="room-code-display">—</strong>
+          <button id="copy-room-code" type="button">复制邀请</button>
+        </div>
+        <p id="room-summary">等待另一名玩家加入</p>
+        <p id="reconnect-notice" class="reconnect-notice" role="status" hidden></p>
+        <p id="countdown" class="countdown" hidden></p>
+        <div class="controls">
+          <button id="ready" type="button">我准备好了</button>
+          <button id="rematch" type="button" hidden>再来一局</button>
+          <button id="leave" type="button">返回大厅</button>
+        </div>
       </section>
       <section class="network-tools" aria-label="网络条件模拟">
         <label>往返延迟 <input id="latency-ms" type="number" min="0" max="500" step="10" value="0" /> ms</label>
@@ -31,7 +52,7 @@
         <div><dt>座位</dt><dd id="player-number">—</dd></div>
         <div><dt>人数</dt><dd id="player-count">0 / 2</dd></div>
         <div><dt>输入</dt><dd id="input-stats">0 / 0</dd></div>
-        <div><dt>RTT</dt><dd id="rtt">0 ms</dd></div>
+        <div><dt>网络</dt><dd id="rtt">同步中</dd></div>
         <div><dt>校正误差</dt><dd id="correction">0 px</dd></div>
         <div><dt>战斗状态</dt><dd id="combat-state">WAITING</dd></div>
         <div><dt>攻守</dt><dd id="roles">—</dd></div>

@@ -11,6 +11,8 @@ const EMPTY_COMMAND = Object.freeze({
   shouDown: false,
   shouPressed: false,
   niuPressed: false,
+  responseElapsed: null,
+  perfectAllowed: true,
 });
 
 export class SimulationCore {
@@ -22,6 +24,7 @@ export class SimulationCore {
     playerConfigs,
     seed = 0x6d2b79f5,
     reactionTiming = null,
+    reactionGrace = 0,
   }) {
     if (!arenaConfig || !combatConfig || !lockConfig || !movementConfig) {
       throw new TypeError("SimulationCore requires arena, combat, lock, and movement configs");
@@ -42,6 +45,7 @@ export class SimulationCore {
     this.players = playerConfigs.map((playerConfig) => new Player(playerConfig, movementConfig));
     this.lock = new LockSystem(lockConfig);
     this.combat = new CombatSystem(combatConfig, () => this.random.next());
+    this.combat.setReactionGrace(reactionGrace);
     this.reactionTiming = reactionTiming ? { ...reactionTiming } : null;
     this.tick = 0;
     this.lineOfSightClear = false;
@@ -82,9 +86,13 @@ export class SimulationCore {
 
     const shouPressed = commands.map((command) => command.shouPressed);
     const niuPressed = commands.map((command) => command.niuPressed);
+    const responseElapsed = commands.map((command) => command.responseElapsed);
+    const perfectAllowed = commands.map((command) => command.perfectAllowed);
     this.combat.update(deltaTime, {
       shouPressed,
       niuPressed,
+      responseElapsed,
+      perfectAllowed,
       threatActive: this.lock.isFocusing,
     });
     this.collectCombatEvents(events);
@@ -200,6 +208,11 @@ function normalizeCommand(command = EMPTY_COMMAND) {
     shouDown: Boolean(command.shouDown),
     shouPressed: Boolean(command.shouPressed),
     niuPressed: Boolean(command.niuPressed),
+    responseElapsed: command.responseElapsed != null
+      && Number.isFinite(Number(command.responseElapsed))
+      ? Number(command.responseElapsed)
+      : null,
+    perfectAllowed: command.perfectAllowed !== false,
   };
 }
 

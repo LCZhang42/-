@@ -6,6 +6,15 @@ header p { color: #b8c2cf; }
 h1 { margin: 4px 0; }
 .eyebrow { margin: 0; color: #f3b84c; font-size: 12px; letter-spacing: .18em; }
 .controls, .network-tools { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin: 20px 0 10px; }
+.lobby-card, .room-card { margin: 20px 0 10px; padding: 16px; border: 1px solid #465466; border-radius: 10px; background: rgba(18, 24, 32, .92); }
+.lobby-card .controls, .room-card .controls { margin: 0 0 10px; }
+.join-controls { padding-top: 8px; border-top: 1px solid #303b48; }
+.room-card > div:first-child { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.room-card > div:first-child span { color: #b8c2cf; }
+#room-code-display { font-size: 30px; letter-spacing: .18em; color: #fff4c4; }
+.error-card { padding: 12px; border: 1px solid #e36b5d; border-radius: 8px; color: #ffd6cf; background: #421d1a; }
+.reconnect-notice { padding: 12px; border: 1px solid #f3b84c; border-radius: 8px; color: #fff4c4; background: #3d3015; }
+.countdown { margin: 12px 0; text-align: center; font-size: 38px; font-weight: 900; color: #f3b84c; }
 .network-tools { margin-top: 10px; padding: 10px; border: 1px solid #394655; border-radius: 8px; background: #121820; }
 label { display: grid; gap: 5px; color: #b8c2cf; }
 input, button { min-height: 40px; border: 1px solid #596576; border-radius: 7px; padding: 8px 12px; background: #171d25; color: inherit; }

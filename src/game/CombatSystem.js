@@ -17,6 +17,7 @@ export class CombatSystem {
     this.config = config;
     this.random = random;
     this.events = [];
+    this.reactionGraceDuration = 0;
     this.reset();
   }
 
@@ -47,6 +48,10 @@ export class CombatSystem {
       this.reactionWindowDuration,
       Math.max(0.02, perfectWindow),
     );
+  }
+
+  setReactionGrace(duration) {
+    this.reactionGraceDuration = Math.max(0, Number(duration) || 0);
   }
 
   update(deltaTime, inputs = {}) {
@@ -104,17 +109,31 @@ export class CombatSystem {
     if (this.state === COMBAT_STATES.reaction) {
       this.reactionElapsed += deltaTime;
       this.stateTimeRemaining = Math.max(0, this.stateTimeRemaining - deltaTime);
+      const reactionWindow = this.reactionWindowDuration ?? this.config.reactionWindow;
+      const stampedElapsed = Number(inputs.responseElapsed?.[this.defenderIndex]);
+      const responseElapsed = Number.isFinite(stampedElapsed)
+        ? stampedElapsed
+        : this.reactionElapsed;
+      const perfectAllowed = inputs.perfectAllowed?.[this.defenderIndex] !== false;
       const correctPressed = this.attackKind === "bull"
         ? defenderPressedNiu
         : defenderPressedShou;
       const wrongPressed = this.attackKind === "bull"
         ? defenderPressedShou
         : defenderPressedNiu;
-      if (wrongPressed) {
+      if ((wrongPressed || correctPressed) && responseElapsed < 0) {
+        this.resolveFailure("early");
+      } else if ((wrongPressed || correctPressed) && responseElapsed > reactionWindow) {
+        this.resolveFailure("timeout");
+      } else if (wrongPressed) {
         this.resolveFailure("wrong");
       } else if (correctPressed) {
-        this.resolveSuccess(this.attackKind === "shou" && this.isPerfectTiming());
-      } else if (this.stateTimeRemaining <= 0) {
+        this.resolveSuccess(
+          this.attackKind === "shou"
+          && perfectAllowed
+          && this.isPerfectTiming(responseElapsed),
+        );
+      } else if (this.reactionElapsed >= reactionWindow + this.reactionGraceDuration) {
         this.resolveFailure("timeout");
       }
       return;
@@ -267,11 +286,11 @@ export class CombatSystem {
     );
   }
 
-  isPerfectTiming() {
+  isPerfectTiming(reactionElapsed = this.reactionElapsed) {
     const reactionWindow = this.reactionWindowDuration ?? this.config.reactionWindow;
     const perfectWindow = this.perfectWindowDuration ?? this.config.perfectWindow;
     const center = reactionWindow / 2;
-    return Math.abs(this.reactionElapsed - center) <= perfectWindow / 2;
+    return Math.abs(reactionElapsed - center) <= perfectWindow / 2;
   }
 
   finishRound() {

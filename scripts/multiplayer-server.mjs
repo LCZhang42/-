@@ -23,4 +23,4 @@ const port = Number.parseInt(process.argv[2] ?? process.env.MULTIPLAYER_PORT ?? 
 const host = process.env.MULTIPLAYER_HOST ?? "127.0.0.1";
 const gameServer = createBattleServer({ greet: true });
 await gameServer.listen(port, host);
-console.log("寿数回战 N3 服务器：ws://" + host + ":" + port);
+console.log("寿数回战 N6 服务器：ws://" + host + ":" + port);
