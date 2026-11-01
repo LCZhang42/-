@@ -3,6 +3,7 @@ import { extname, join, normalize, resolve, sep } from "node:path";
 import { readFile, stat } from "node:fs/promises";
 
 const requestedRoot = process.argv[2] ?? ".";
+const projectRoot = resolve(process.cwd());
 const root = resolve(process.cwd(), requestedRoot);
 const port = Number.parseInt(process.argv[3] ?? process.env.PORT ?? "4173", 10);
 const host = process.env.HOST ?? "127.0.0.1";
@@ -20,6 +21,16 @@ const MIME_TYPES = {
 
 function resolveRequestPath(url) {
   const pathname = decodeURIComponent(new URL(url, `http://${host}`).pathname);
+  if (pathname === "/vendor/colyseus.js") {
+    return root === projectRoot
+      ? resolve(projectRoot, "node_modules", "@colyseus", "sdk", "dist", "colyseus.js")
+      : resolve(root, "vendor", "colyseus.js");
+  }
+  if (pathname === "/vendor/colyseus-debug.js") {
+    return root === projectRoot
+      ? resolve(projectRoot, "node_modules", "@colyseus", "sdk", "dist", "debug.js")
+      : resolve(root, "vendor", "colyseus-debug.js");
+  }
   const relativePath = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, "");
   const candidate = normalize(join(root, relativePath));
   if (candidate !== root && !candidate.startsWith(`${root}${sep}`)) {

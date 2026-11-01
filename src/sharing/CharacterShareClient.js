@@ -23,7 +23,7 @@ export function normalizeShareCode(value) {
 export class CharacterShareClient {
   constructor({ baseUrl = "", storage = globalThis.localStorage, fetch = globalThis.fetch } = {}) {
     this.storage = storage;
-    this.fetch = fetch;
+    this.fetch = typeof fetch === "function" ? fetch.bind(globalThis) : null;
     this.baseUrl = this.readSavedBase() || normalizeShareApiBase(baseUrl);
   }
 

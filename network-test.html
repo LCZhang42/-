@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>寿数回战 · N3 权威战斗测试</title>
+    <link rel="stylesheet" href="./css/network-test.css" />
+  </head>
+  <body data-connection="idle">
+    <main>
+      <header>
+        <p class="eyebrow">SERVER AUTHORITATIVE N3</p>
+        <h1>权威战斗同步测试</h1>
+        <p>服务器统一裁定移动、冲刺、锁定、寿来／牛来、回应、伤害和攻守交换；客户端只发送按键输入。</p>
+        <p>移动：WASD／方向键；寿：F／K；牛：G／L；冲刺：左右 Shift。</p>
+      </header>
+      <section class="controls" aria-label="连接设置">
+        <label>服务器 <input id="server-url" value="ws://127.0.0.1:2567" /></label>
+        <button id="connect" type="button">加入测试房间</button>
+        <button id="leave" type="button" disabled>离开</button>
+      </section>
+      <section class="network-tools" aria-label="网络条件模拟">
+        <label>往返延迟 <input id="latency-ms" type="number" min="0" max="500" step="10" value="0" /> ms</label>
+        <label>抖动 <input id="jitter-ms" type="number" min="0" max="200" step="5" value="0" /> ms</label>
+        <label>上行丢包 <input id="loss-percent" type="number" min="0" max="100" step="1" value="0" /> %</label>
+        <button id="apply-network" type="button">应用网络条件</button>
+      </section>
+      <p id="status" role="status">尚未连接</p>
+      <dl>
+        <div><dt>房间</dt><dd id="room-id">—</dd></div>
+        <div><dt>座位</dt><dd id="player-number">—</dd></div>
+        <div><dt>人数</dt><dd id="player-count">0 / 2</dd></div>
+        <div><dt>输入</dt><dd id="input-stats">0 / 0</dd></div>
+        <div><dt>RTT</dt><dd id="rtt">0 ms</dd></div>
+        <div><dt>校正误差</dt><dd id="correction">0 px</dd></div>
+        <div><dt>战斗状态</dt><dd id="combat-state">WAITING</dd></div>
+        <div><dt>攻守</dt><dd id="roles">—</dd></div>
+        <div><dt>寿命</dt><dd id="life">60 / 60</dd></div>
+        <div><dt>锁定</dt><dd id="lock-progress">0%</dd></div>
+        <div><dt>最后事件</dt><dd id="last-event">—</dd></div>
+      </dl>
+      <p id="callout-overlay" class="callout-overlay" hidden></p>
+      <canvas id="arena" width="1280" height="720" aria-label="两个联网圆形角色"></canvas>
+    </main>
+    <script src="./vendor/colyseus.js"></script>
+    <script src="./vendor/colyseus-debug.js"></script>
+    <script type="module" src="./src/network/network-client.js"></script>
+  </body>
+</html>

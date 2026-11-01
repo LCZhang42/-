@@ -1,12 +1,21 @@
 {
   "name": "shoushu-kaisen",
-  "version": "0.15.0",
+  "version": "0.19.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "node scripts/serve.mjs",
     "build": "node scripts/build.mjs",
     "preview": "node scripts/serve.mjs dist",
-    "test": "node --test"
+    "server:dev": "node scripts/multiplayer-server.mjs",
+    "test": "node --test",
+    "test:browser": "node scripts/browser-acceptance.mjs",
+    "test:network": "node scripts/network-acceptance.mjs"
+  },
+  "dependencies": {
+    "@colyseus/core": "^0.18.24",
+    "@colyseus/schema": "^5.0.43",
+    "@colyseus/sdk": "^0.18.9",
+    "@colyseus/ws-transport": "^0.18.4"
   }
 }

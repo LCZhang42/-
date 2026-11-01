@@ -25,16 +25,14 @@ import {
   readCharacterSelections,
   writeCharacterSelections,
 } from "../characters/CharacterSelection.js";
-import { Arena, resolvePlayerPair } from "../game/Arena.js";
-import { CombatSystem, COMBAT_STATES } from "../game/CombatSystem.js";
-import { LockSystem } from "../game/LockSystem.js";
+import { COMBAT_STATES } from "../game/CombatSystem.js";
 import { MatchStats } from "../game/MatchStats.js";
-import { Player } from "../game/Player.js";
 import { CanvasRenderer } from "../rendering/CanvasRenderer.js";
 import { DebugOverlay } from "../ui/DebugOverlay.js";
 import { CharacterShareDialog } from "../ui/CharacterShareDialog.js";
 import { CustomCharacterImport } from "../ui/CustomCharacterImport.js";
 import { PoseEditor } from "../ui/PoseEditor.js";
+import { SimulationCore } from "../../shared/SimulationCore.js";
 import { GameLoop } from "./GameLoop.js";
 import { InputManager } from "./InputManager.js";
 import { StateMachine } from "./StateMachine.js";
@@ -70,6 +68,8 @@ export class Game {
     customCharacterOpen,
     customCharacterExport,
     customCharacterDelete,
+    customCharacterShare,
+    customCharacterReceive,
     customCharacterOverlay,
     customCharacterClose,
     customCharacterCanvas,
@@ -364,13 +364,18 @@ export class Game {
       refreshRate: GAME_CONFIG.debugRefreshRate,
     });
 
-    this.arena = new Arena(ARENA_CONFIG);
-    this.players = PLAYER_CONFIGS.map(
-      (playerConfig) => new Player(playerConfig, MOVEMENT_CONFIG),
-    );
-    this.lockSystem = new LockSystem(LOCK_CONFIG);
-    this.combat = new CombatSystem(COMBAT_CONFIG);
-    this.lockSystem.reset(this.players[this.combat.attackerIndex]);
+    this.simulation = new SimulationCore({
+      arenaConfig: ARENA_CONFIG,
+      combatConfig: COMBAT_CONFIG,
+      lockConfig: LOCK_CONFIG,
+      movementConfig: MOVEMENT_CONFIG,
+      playerConfigs: PLAYER_CONFIGS,
+      seed: createLocalSeed(),
+    });
+    this.arena = this.simulation.arena;
+    this.players = this.simulation.players;
+    this.lockSystem = this.simulation.lock;
+    this.combat = this.simulation.combat;
     this.lockAudio = new LockAudio();
     this.voiceAnnouncer = new VoiceAnnouncer();
     this.stats = new MatchStats();
@@ -388,7 +393,7 @@ export class Game {
     this.bullIndicators = new Map(
       [...bullIndicators].map((element) => [element.dataset.bullPlayer, element]),
     );
-    this.updateLineOfSight();
+    this.lineOfSightClear = this.simulation.lineOfSightClear;
     this.bindOverlayControls();
     this.applyDifficulty(this.difficulty, false);
     this.syncSettingsControls();
@@ -474,8 +479,9 @@ export class Game {
     }
 
     if (this.input.wasPressed(SYSTEM_KEYS.forceBull)) {
-      this.combat.setForceBullTokens(!this.combat.forceBullTokens);
-      this.handleCombatEvents();
+      this.handleSimulationEvents(
+        this.simulation.setForceBullTokens(!this.combat.forceBullTokens),
+      );
     }
 
     if (this.input.wasPressed(SYSTEM_KEYS.toggleLowEffects)) {
@@ -523,70 +529,13 @@ export class Game {
       });
     }
     this.lastCommands = commands;
-    const shouPressed = commands.map((command) => command.shouPressed);
-    const niuPressed = commands.map((command) => command.niuPressed);
-    this.combat.update(deltaTime, {
-      shouPressed,
-      niuPressed,
-      threatActive: this.lockSystem.isFocusing,
-    });
-    this.handleCombatEvents();
-
-    if (
-      niuPressed[this.combat.attackerIndex] &&
-      this.combat.triggerBullCallout()
-    ) {
-      this.lockSystem.reset(this.players[this.combat.attackerIndex]);
-      this.lockAudio.update(0, false);
-      this.handleCombatEvents();
-    }
-
-    const attacker = this.players[this.combat.attackerIndex];
-    const target = this.players[this.combat.defenderIndex];
-    const wantsFocus = this.combat.canLock && commands[this.combat.attackerIndex].shouDown;
-    const movementAllowed = this.combat.movementAllowed && this.combat.hitStopRemaining <= 0;
-
-    for (const [index, player] of this.players.entries()) {
-      player.beginStep();
-      const axis = movementAllowed
-        ? commands[index]
-        : { x: 0, y: 0 };
-      player.update(deltaTime, {
-        ...axis,
-        dashPressed: movementAllowed && commands[index].dashPressed,
-        moveSpeed:
-          player === attacker && wantsFocus && !this.lockSystem.isRecovering
-            ? MOVEMENT_CONFIG.focusMoveSpeed
-            : MOVEMENT_CONFIG.moveSpeed,
-      });
-    }
-
-    for (let pass = 0; pass < MOVEMENT_CONFIG.collisionPasses; pass += 1) {
-      for (const player of this.players) {
-        this.arena.constrainPlayer(player);
-      }
-      resolvePlayerPair(this.players[0], this.players[1]);
-    }
-
-    for (const player of this.players) {
-      this.arena.constrainPlayer(player);
-    }
-    this.updateLineOfSight();
-
-    const lockEvent = this.lockSystem.update(deltaTime, {
-      attacker,
-      target,
-      wantsFocus,
-      hasLineOfSight: this.lineOfSightClear,
-      targetLockImmune: target.isLockImmune,
-    });
+    const result = this.simulation.step(deltaTime, commands);
+    this.lineOfSightClear = this.simulation.lineOfSightClear;
     this.lockAudio.update(
       this.lockSystem.progress,
       this.lockSystem.isFocusing && !this.lockSystem.isReady,
     );
-    this.combat.setLocking(this.lockSystem.isFocusing);
-    if (lockEvent) this.handleLockEvent(lockEvent);
-    this.handleCombatEvents();
+    this.handleSimulationEvents(result.events);
   }
 
   getHumanCommand(player) {
@@ -1123,7 +1072,7 @@ export class Game {
   applyDifficulty(key, announce = true) {
     const profile = DIFFICULTY_CONFIG[key] ?? DIFFICULTY_CONFIG.standard;
     this.difficulty = DIFFICULTY_CONFIG[key] ? key : "standard";
-    this.combat.setReactionTiming(profile.reactionWindow, profile.perfectWindow);
+    this.simulation.setReactionTiming(profile.reactionWindow, profile.perfectWindow);
     if (this.settings?.difficulty) this.settings.difficulty.value = this.difficulty;
     if (announce) {
       this.status.textContent = `反应难度：${profile.label} · ${profile.reactionWindow.toFixed(2)} 秒`;
@@ -1158,46 +1107,35 @@ export class Game {
   }
 
   resetRound() {
-    for (const player of this.players) {
-      player.reset();
-    }
-    this.combat.reset();
     const profile = DIFFICULTY_CONFIG[this.difficulty];
-    this.combat.setReactionTiming(profile.reactionWindow, profile.perfectWindow);
+    this.simulation.reset({
+      seed: createLocalSeed(),
+      reactionTiming: profile,
+    });
     this.stats.reset();
     this.aiController.reset();
     this.lastCommands = [this.emptyCommand(), this.emptyCommand()];
-    this.lockSystem.reset(this.players[this.combat.attackerIndex]);
     this.lockAudio.update(0, false);
-    this.updateLineOfSight();
+    this.lineOfSightClear = this.simulation.lineOfSightClear;
     this.togglePause(false);
     this.outcomeOverlay.hidden = true;
     this.status.textContent = "新一局 · 攻守已重新抽签";
     this.statusResetAt = performance.now() + 900;
   }
 
-  handleLockEvent(event) {
-    this.stats.recordLock(this.combat.attackerIndex);
-    if (event.type === "complete") {
-      this.combat.addBullCharge(
-        this.combat.attackerIndex,
-        COMBAT_CONFIG.bullChargeLock,
-      );
-      this.combat.triggerCallout("shou");
-      return;
-    }
-    this.combat.addBullCharge(
-      this.combat.defenderIndex,
-      COMBAT_CONFIG.bullChargeDodge,
-    );
+  handleLockAttempt(event) {
+    this.stats.recordLock(event.attackerIndex);
+    if (event.result === "complete") return;
     this.lockAudio.pulse(false);
     this.status.textContent = `喊早了 · 硬直 ${LOCK_CONFIG.earlyReleaseRecovery.toFixed(2)} 秒`;
     this.statusResetAt = performance.now() + 900;
   }
 
-  handleCombatEvents() {
-    for (const event of this.combat.drainEvents()) {
-      if (event.type === "callout") {
+  handleSimulationEvents(events) {
+    for (const event of events) {
+      if (event.type === "lockAttempt") {
+        this.handleLockAttempt(event);
+      } else if (event.type === "callout") {
         this.lockAudio.combatCue(event.kind === "bull" ? "bullCallout" : "callout");
         this.voiceAnnouncer.speak(event.kind === "bull" ? "牛来" : "寿来");
       } else if (event.type === "reactionOpened") {
@@ -1221,10 +1159,8 @@ export class Game {
         this.status.textContent = outcomeStatus(event.outcome);
         this.statusResetAt = performance.now() + 1100;
       } else if (event.type === "cancelLock") {
-        this.lockSystem.reset(this.players[this.combat.attackerIndex]);
         this.lockAudio.update(0, false);
       } else if (event.type === "roleSwap") {
-        this.lockSystem.reset(this.players[this.combat.attackerIndex]);
         this.status.textContent = `${this.players[this.combat.attackerIndex].name} 转为攻方`;
         this.statusResetAt = performance.now() + 900;
       } else if (event.type === "bullToken") {
@@ -1236,10 +1172,13 @@ export class Game {
           : "测试模式：强制牛符已关闭";
         this.statusResetAt = performance.now() + 1100;
       } else if (event.type === "roundOver") {
-        this.lockSystem.reset(this.players[this.combat.attackerIndex]);
         this.showRoundOutcome(event.winnerIndex);
       }
     }
+  }
+
+  handleCombatEvents() {
+    this.handleSimulationEvents(this.simulation.flushCombatEvents());
   }
 
   showRoundOutcome(winnerIndex) {
@@ -1255,10 +1194,7 @@ export class Game {
   }
 
   updateLineOfSight() {
-    this.lineOfSightClear = this.arena.hasLineOfSight(
-      this.players[this.combat.attackerIndex],
-      this.players[this.combat.defenderIndex],
-    );
+    this.lineOfSightClear = this.simulation.updateLineOfSight();
   }
 
   handleVisibilityChange() {
@@ -1593,4 +1529,13 @@ function outcomeStatus(outcome) {
     reflect: `寿回成功 · 攻方损失 ${damage} 年`,
     perfect: `完美寿回 · 攻方损失 ${damage} 年`,
   }[type] ?? GAME_CONFIG.stageLabel;
+}
+
+function createLocalSeed() {
+  if (globalThis.crypto?.getRandomValues) {
+    const value = new Uint32Array(1);
+    globalThis.crypto.getRandomValues(value);
+    return value[0];
+  }
+  return (Date.now() ^ Math.floor(globalThis.performance?.now?.() ?? 0)) >>> 0;
 }

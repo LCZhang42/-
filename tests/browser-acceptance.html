@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>寿数回战 A4–A6 浏览器验收</title></head>
+<body data-status="pending">
+  <pre id="result">RUNNING</pre>
+  <iframe id="game" title="game under test" style="width:1280px;height:720px"></iframe>
+  <script type="module">
+    const output = document.querySelector("#result");
+    const frame = document.querySelector("#game");
+    const checks = [];
+
+    function assert(condition, message) {
+      if (!condition) throw new Error(message);
+      checks.push(message);
+    }
+
+    function wait(ms = 0) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    async function waitFor(predicate, message, timeout = 8000) {
+      const started = performance.now();
+      while (performance.now() - started < timeout) {
+        if (await predicate()) return;
+        await wait(25);
+      }
+      throw new Error(`等待超时：${message}`);
+    }
+
+    async function loadGame() {
+      const loaded = new Promise((resolve) => frame.addEventListener("load", resolve, { once: true }));
+      frame.src = `/?acceptance=${Date.now()}`;
+      await loaded;
+      await waitFor(() => frame.contentWindow.__SHOUSHU_GAME__, "游戏实例启动");
+      return {
+        window: frame.contentWindow,
+        document: frame.contentDocument,
+        game: frame.contentWindow.__SHOUSHU_GAME__,
+      };
+    }
+
+    function click(document, selector) {
+      const element = document.querySelector(selector);
+      if (!element) throw new Error(`找不到控件 ${selector}`);
+      element.click();
+    }
+
+    async function makePngFile(window) {
+      const canvas = window.document.createElement("canvas");
+      canvas.width = 96;
+      canvas.height = 128;
+      const context = canvas.getContext("2d");
+      context.fillStyle = "#ef8c4a";
+      context.fillRect(12, 8, 72, 112);
+      context.fillStyle = "#20242b";
+      context.beginPath();
+      context.arc(48, 36, 18, 0, Math.PI * 2);
+      context.fill();
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+      return new window.File([blob], "acceptance-doll.png", { type: "image/png" });
+    }
+
+    try {
+      let page = await loadGame();
+      const runtimeErrors = [];
+      const watchRuntime = (targetWindow) => {
+        targetWindow.addEventListener("error", (event) => runtimeErrors.push(event.message));
+        targetWindow.addEventListener("unhandledrejection", (event) => runtimeErrors.push(String(event.reason)));
+      };
+      watchRuntime(page.window);
+      page.window.localStorage.setItem("shoushu-tutorial-seen-ai", "1");
+
+      click(page.document, "#start-ai");
+      await waitFor(() => !page.document.querySelector("#character-select-overlay").hidden, "打开选角页");
+
+      click(page.document, "#custom-character-open");
+      await waitFor(() => !page.document.querySelector("#custom-character-overlay").hidden, "打开本地角色导入");
+      const fileInput = page.document.querySelector("#custom-character-file");
+      const transfer = new page.window.DataTransfer();
+      transfer.items.add(await makePngFile(page.window));
+      Object.defineProperty(fileInput, "files", { configurable: true, value: transfer.files });
+      fileInput.dispatchEvent(new page.window.Event("change", { bubbles: true }));
+      await waitFor(() => page.document.querySelector("#custom-character-status").textContent.includes("已在本地解码"), "本地图片解码");
+      const paperMode = page.document.querySelector("[name='custom-character-mode'][value='paper']");
+      paperMode.checked = true;
+      paperMode.dispatchEvent(new page.window.Event("change", { bubbles: true }));
+      page.document.querySelector("#custom-character-name").value = "验收纸偶";
+      await page.game.customCharacterImport.save();
+      assert(page.document.querySelector("#custom-character-overlay").hidden, "A5：本地角色保存完成并关闭导入页");
+      assert(page.game.customCharacterImport.records.size === 1, "A5：自定义角色写入 IndexedDB 并注册");
+      const customId = [...page.game.customCharacterImport.records.keys()][0];
+
+      page = await loadGame();
+      watchRuntime(page.window);
+      await waitFor(() => page.game.customCharacterImport.records.has(customId), "刷新后恢复本地角色");
+      assert(page.game.customCharacterImport.records.has(customId), "A5：刷新后恢复自定义角色");
+      page.window.localStorage.setItem("shoushu-tutorial-seen-ai", "1");
+      click(page.document, "#start-ai");
+      await waitFor(() => !page.document.querySelector("#character-select-overlay").hidden, "刷新后打开选角页");
+
+      page.game.characterSelectionSession.select(customId);
+      page.game.renderCharacterSelection();
+      click(page.document, "#custom-character-share");
+      await waitFor(() => !page.document.querySelector("#character-share-overlay").hidden, "打开分享码生成页");
+      page.document.querySelector("#character-share-endpoint").value = "http://127.0.0.1:4175";
+      click(page.document, "#character-share-save-endpoint");
+      page.document.querySelector("#share-rights").checked = true;
+      page.document.querySelector("#share-minor-safety").checked = true;
+      page.document.querySelector("#share-privacy").checked = true;
+      click(page.document, "#character-share-upload");
+      await waitFor(() => !page.document.querySelector("#character-share-upload").disabled, "生成未公开分享码");
+      assert(page.document.querySelector("#character-share-code").value === "accept123",
+        `A6：权利声明后可生成未公开分享码（${page.document.querySelector("#character-share-status").textContent}）`);
+      click(page.document, "#character-share-close");
+
+      click(page.document, "#custom-character-receive");
+      page.document.querySelector("#character-receive-code").value = "accept123";
+      click(page.document, "#character-share-lookup");
+      await waitFor(() => !page.document.querySelector("#character-share-lookup").disabled, "读取未公开分享码");
+      assert(!page.document.querySelector("#character-share-preview").hidden, "A6：分享码读取后显示确认预览");
+      assert(page.document.querySelector("#character-share-preview-name").textContent === "验收纸偶", "A6：分享预览保留角色名称");
+      click(page.document, "#character-share-close");
+
+      click(page.document, "#custom-character-receive");
+      await waitFor(() => !page.document.querySelector("#character-share-overlay").hidden, "打开分享码接收页");
+      page.document.querySelector("#character-share-endpoint").value = "";
+      click(page.document, "#character-share-save-endpoint");
+      assert(page.document.querySelector("#character-share-status").textContent.includes("本地功能保持可用"), "A6：未配置服务时给出本地降级说明");
+      page.document.querySelector("#character-receive-code").value = "abcd1234";
+      click(page.document, "#character-share-lookup");
+      await waitFor(() => !page.document.querySelector("#character-share-lookup").disabled, "未配置查询返回");
+      assert(page.document.querySelector("#character-share-status").textContent.includes("尚未配置"), "A6：未配置服务查询可恢复且不阻塞 UI");
+
+      page.document.querySelector("#character-share-endpoint").value = "http://127.0.0.1:9";
+      click(page.document, "#character-share-save-endpoint");
+      page.document.querySelector("#character-receive-code").value = "abcd1234";
+      click(page.document, "#character-share-lookup");
+      await waitFor(() => !page.document.querySelector("#character-share-lookup").disabled, "离线分享服务查询返回");
+      assert(page.document.querySelector("#character-share-status").classList.contains("is-error"), "A6：分享服务离线时显示可恢复错误");
+      click(page.document, "#character-share-close");
+
+      click(page.document, "#character-select-confirm");
+      await waitFor(() => !page.document.querySelector("#pose-editor-overlay").hidden, "打开 Pose 编辑器");
+      click(page.document, "#pose-use");
+      await waitFor(() => page.game.menuOpen === false, "进入单人对局");
+      assert(page.document.querySelector("#start-overlay").hidden, "A4：选角与 Pose 流程进入对局");
+
+      for (let round = 0; round < 20; round += 1) {
+        page.game.resetRound();
+        page.game.combat.update(2);
+        const attacker = page.game.combat.attackerIndex;
+        page.game.combat.life = attacker === 0 ? [60, 54] : [54, 60];
+        page.game.combat.roundRemaining = 0.001;
+        page.game.combat.update(0.01);
+        page.game.handleCombatEvents();
+        assert(page.game.combat.state === "ROUND_OVER", `稳定性：第 ${round + 1} 局正常结算`);
+        assert(page.game.combat.attackerIndex === attacker, `稳定性：第 ${round + 1} 局攻方身份有效`);
+        assert(!page.document.querySelector("#outcome-overlay").hidden, `A4：第 ${round + 1} 局结算 Pose 可见`);
+      }
+      page.game.resetRound();
+      assert(page.game.combat.state === "ROUND_START", "稳定性：20 局后仍可重开");
+      assert(page.document.querySelector("#outcome-overlay").hidden, "A4：重开后结算演出正确释放");
+
+      page.window.confirm = () => true;
+      await page.game.customCharacterImport.delete(customId);
+      assert(!page.game.customCharacterImport.records.has(customId), "A5：彻底删除后内存目录无残留");
+      assert(await page.game.customCharacterImport.store.get(customId) == null, "A5：彻底删除后 IndexedDB 无残留");
+      assert(runtimeErrors.length === 0, `浏览器运行无未捕获错误：${runtimeErrors.join("；")}`);
+
+      document.body.dataset.status = "passed";
+      output.textContent = `PASS ${checks.length}\n${checks.join("\n")}`;
+    } catch (error) {
+      document.body.dataset.status = "failed";
+      output.textContent = `FAIL\n${error.stack || error}`;
+    }
+  </script>
+</body>
+</html>

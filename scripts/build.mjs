@@ -8,9 +8,23 @@ const packageInfo = JSON.parse(await readFile(resolve(projectRoot, "package.json
 await rm(outputRoot, { recursive: true, force: true });
 await mkdir(outputRoot, { recursive: true });
 
-for (const entry of ["index.html", "css", "src", "assets"]) {
+for (const entry of ["index.html", "network-test.html", "css", "src", "shared", "assets"]) {
   await cp(resolve(projectRoot, entry), resolve(outputRoot, entry), { recursive: true });
 }
+
+await mkdir(resolve(outputRoot, "vendor"), { recursive: true });
+await cp(
+  resolve(projectRoot, "node_modules", "@colyseus", "sdk", "dist", "colyseus.js"),
+  resolve(outputRoot, "vendor", "colyseus.js"),
+);
+await cp(
+  resolve(projectRoot, "node_modules", "@colyseus", "sdk", "dist", "debug.js"),
+  resolve(outputRoot, "vendor", "colyseus-debug.js"),
+);
+await cp(
+  resolve(projectRoot, "node_modules", "@colyseus", "sdk", "LICENSE"),
+  resolve(outputRoot, "vendor", "colyseus.LICENSE"),
+);
 
 const buildInfo = {
   name: packageInfo.name,

@@ -10,7 +10,10 @@ export const COMBAT_STATES = Object.freeze({
 });
 
 export class CombatSystem {
-  constructor(config, random = Math.random) {
+  constructor(config, random) {
+    if (typeof random !== "function") {
+      throw new TypeError("CombatSystem requires an injected random source");
+    }
     this.config = config;
     this.random = random;
     this.events = [];

@@ -64,3 +64,21 @@ test("share client keeps local play independent when service is unconfigured", a
   assert.equal(normalizeReportReason("copyright"), "copyright");
   assert.throws(() => normalizeReportReason("revenge"), /原因/);
 });
+
+test("share client binds receiver-sensitive browser fetch before requesting", async () => {
+  let receiver = null;
+  const receiverSensitiveFetch = function () {
+    receiver = this;
+    return Promise.resolve({
+      ok: true,
+      json: async () => ({ ok: true }),
+    });
+  };
+  const client = new CharacterShareClient({
+    baseUrl: "http://127.0.0.1:8787",
+    storage: null,
+    fetch: receiverSensitiveFetch,
+  });
+  assert.deepEqual(await client.health(), { ok: true });
+  assert.equal(receiver, globalThis);
+});
