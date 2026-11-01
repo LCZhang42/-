@@ -102,16 +102,62 @@ const catalogErrors = validateCharacterCatalog(CHARACTER_CATALOG);
 if (catalogErrors.length > 0) throw new Error(`角色目录无效：${catalogErrors.join("；")}`);
 
 export const CHARACTER_BY_ID = new Map(CHARACTER_CATALOG.map((character) => [character.id, character]));
+const CUSTOM_CHARACTER_BY_ID = new Map();
+const CUSTOM_OBJECT_URLS = new Map();
 export const GRANDPA_CHARACTER = CHARACTER_CATALOG[0];
 export const GRANDPA_POSES = STANDARD_POSES;
 
 export function getCharacter(id) {
-  return CHARACTER_BY_ID.get(id) ?? GRANDPA_CHARACTER;
+  return CUSTOM_CHARACTER_BY_ID.get(id) ?? CHARACTER_BY_ID.get(id) ?? GRANDPA_CHARACTER;
 }
 
 export function getCharacterIndex(id) {
-  const index = CHARACTER_CATALOG.findIndex((character) => character.id === id);
+  const index = getAvailableCharacters().findIndex((character) => character.id === id);
   return index < 0 ? 0 : index;
+}
+
+export function getAvailableCharacters() {
+  return [...CHARACTER_CATALOG, ...CUSTOM_CHARACTER_BY_ID.values()];
+}
+
+export function registerCustomCharacter(record) {
+  if (!record?.id || !(record.imageBlob instanceof Blob)) throw new Error("自定义角色数据不完整");
+  unregisterCustomCharacter(record.id);
+  const conceptPath = URL.createObjectURL(record.imageBlob);
+  CUSTOM_OBJECT_URLS.set(record.id, conceptPath);
+  const character = Object.freeze({
+    ...GRANDPA_CHARACTER,
+    id: record.id,
+    slug: record.id,
+    name: record.name,
+    tagline: record.mode === "jointed" ? "亲手标过关节的野生老鼠干" : "整片纸偶模式的野生老鼠干",
+    bio: record.mode === "jointed"
+      ? "图片只留在这个浏览器里。十三个关节点会跟随战斗 Pose 弯折，判定仍与所有角色完全相同。"
+      : "图片只留在这个浏览器里。它会整体倾斜和弹动，无法拆分时也能照常参加寿数回战。",
+    conceptPath,
+    assetCredit: "玩家本地导入 · 未上传服务器",
+    customAsset: Object.freeze({
+      mode: record.mode,
+      joints: Object.freeze({ ...record.joints }),
+      width: record.width,
+      height: record.height,
+      imageBlob: record.imageBlob,
+      lastPose: record.lastPose ? Object.freeze({ ...record.lastPose }) : null,
+    }),
+  });
+  CUSTOM_CHARACTER_BY_ID.set(record.id, character);
+  return character;
+}
+
+export function unregisterCustomCharacter(id) {
+  const url = CUSTOM_OBJECT_URLS.get(id);
+  if (url) URL.revokeObjectURL(url);
+  CUSTOM_OBJECT_URLS.delete(id);
+  return CUSTOM_CHARACTER_BY_ID.delete(id);
+}
+
+export function isCustomCharacter(id) {
+  return CUSTOM_CHARACTER_BY_ID.has(id);
 }
 
 export function getCharacterPose(characterOrId, index = 0) {

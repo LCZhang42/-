@@ -14,7 +14,12 @@ import { AIController } from "../ai/AIController.js";
 import { LockAudio } from "../audio/LockAudio.js";
 import { VoiceAnnouncer } from "../audio/VoiceAnnouncer.js";
 import { CharacterAssetLoader } from "../characters/CharacterAssetLoader.js";
-import { CHARACTER_CATALOG, getCharacter, getCharacterIndex } from "../characters/CharacterCatalog.js";
+import {
+  getAvailableCharacters,
+  getCharacter,
+  getCharacterIndex,
+  isCustomCharacter,
+} from "../characters/CharacterCatalog.js";
 import {
   CharacterSelectionSession,
   readCharacterSelections,
@@ -27,6 +32,7 @@ import { MatchStats } from "../game/MatchStats.js";
 import { Player } from "../game/Player.js";
 import { CanvasRenderer } from "../rendering/CanvasRenderer.js";
 import { DebugOverlay } from "../ui/DebugOverlay.js";
+import { CustomCharacterImport } from "../ui/CustomCharacterImport.js";
 import { PoseEditor } from "../ui/PoseEditor.js";
 import { GameLoop } from "./GameLoop.js";
 import { InputManager } from "./InputManager.js";
@@ -60,6 +66,27 @@ export class Game {
     characterMirrorNote,
     characterSelectBack,
     characterSelectConfirm,
+    customCharacterOpen,
+    customCharacterExport,
+    customCharacterDelete,
+    customCharacterOverlay,
+    customCharacterClose,
+    customCharacterCanvas,
+    customCharacterStatus,
+    customCharacterFile,
+    customCharacterPackage,
+    customCharacterZoom,
+    customCharacterRotation,
+    customCharacterOffsetX,
+    customCharacterOffsetY,
+    customCharacterMode,
+    customJointGuide,
+    customJointName,
+    customJointList,
+    customJointUndo,
+    customJointReset,
+    customCharacterName,
+    customCharacterSave,
     poseEditorOverlay,
     poseEditorCanvas,
     poseEditorTitle,
@@ -150,7 +177,34 @@ export class Game {
       mirrorNote: characterMirrorNote,
       back: characterSelectBack,
       confirm: characterSelectConfirm,
+      customOpen: customCharacterOpen,
+      customExport: customCharacterExport,
+      customDelete: customCharacterDelete,
     };
+    this.customCharacterImport = new CustomCharacterImport({
+      overlay: customCharacterOverlay,
+      close: customCharacterClose,
+      canvas: customCharacterCanvas,
+      status: customCharacterStatus,
+      file: customCharacterFile,
+      importPackage: customCharacterPackage,
+      zoom: customCharacterZoom,
+      rotation: customCharacterRotation,
+      offsetX: customCharacterOffsetX,
+      offsetY: customCharacterOffsetY,
+      mode: customCharacterMode,
+      jointGuide: customJointGuide,
+      jointName: customJointName,
+      jointList: customJointList,
+      undoJoint: customJointUndo,
+      resetJoints: customJointReset,
+      name: customCharacterName,
+      save: customCharacterSave,
+    }, {
+      onCatalogChanged: (change) => this.handleCustomCatalogChanged(change),
+      onSaved: (character) => this.selectImportedCharacter(character),
+    });
+    this.customCharacterImport.init();
     this.characterSelectionSession = null;
     this.characterSelectionPreferences = readCharacterSelections(globalThis.localStorage);
     this.pendingMatch = null;
@@ -554,7 +608,8 @@ export class Game {
 
   cycleCharacter(playerIndex) {
     const currentIndex = getCharacterIndex(this.characterIds[playerIndex]);
-    const next = CHARACTER_CATALOG[(currentIndex + 1) % CHARACTER_CATALOG.length];
+    const available = getAvailableCharacters();
+    const next = available[(currentIndex + 1) % available.length];
     this.characterIds[playerIndex] = next.id;
     this.poseIndexes[playerIndex] = next.visual.outfit === "floral" ? 2 : playerIndex;
     this.customPoses[playerIndex] = null;
@@ -583,6 +638,9 @@ export class Game {
     this.startMenu.fullscreen.addEventListener("click", () => this.toggleFullscreen());
     this.characterSelect.back.addEventListener("click", () => this.showMainMenu());
     this.characterSelect.confirm.addEventListener("click", () => this.confirmCharacterSelection());
+    this.characterSelect.customOpen.addEventListener("click", () => this.customCharacterImport.open());
+    this.characterSelect.customExport.addEventListener("click", () => this.exportSelectedCustomCharacter());
+    this.characterSelect.customDelete.addEventListener("click", () => this.deleteSelectedCustomCharacter());
     this.pauseActions.resume.addEventListener("click", () => this.togglePause(false));
     this.pauseActions.restart.addEventListener("click", () => this.resetRound());
     this.pauseActions.settings.addEventListener("click", () => this.openSettings());
@@ -620,7 +678,7 @@ export class Game {
     this.setGameMode(normalizedMode);
     this.characterSelectionSession = new CharacterSelectionSession({
       mode: normalizedMode,
-      catalogIds: CHARACTER_CATALOG.map((character) => character.id),
+      catalogIds: getAvailableCharacters().map((character) => character.id),
       savedIds: this.characterSelectionPreferences[normalizedMode],
     });
     this.menuOpen = true;
@@ -659,11 +717,13 @@ export class Game {
       : "角色只改变外观；AI 将从其余四人中挑选，双方数值完全相同。";
     this.characterSelect.overlay.style.setProperty("--selected-color", selected.palette.shirt);
 
-    this.characterSelect.roster.replaceChildren(...CHARACTER_CATALOG.map((character) => {
+    const availableCharacters = getAvailableCharacters();
+    this.characterSelect.roster.replaceChildren(...availableCharacters.map((character) => {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "character-option";
       button.dataset.characterId = character.id;
+      button.classList.toggle("is-custom", isCustomCharacter(character.id));
       button.setAttribute("aria-pressed", String(character.id === selected.id));
       button.style.setProperty("--character-color", character.palette.shirt);
       const image = document.createElement("img");
@@ -685,6 +745,10 @@ export class Game {
       return button;
     }));
 
+    const selectedIsCustom = isCustomCharacter(selected.id);
+    this.characterSelect.customExport.hidden = !selectedIsCustom;
+    this.characterSelect.customDelete.hidden = !selectedIsCustom;
+
     const expressionData = [
       ["–_–", "麻木"],
       ["⊙口⊙", "震惊"],
@@ -701,6 +765,60 @@ export class Game {
       return chip;
     }));
     this.characterAssets.load(selected.id);
+  }
+
+  handleCustomCatalogChanged({ deletedId = null, failedIds = [] } = {}) {
+    const invalidIds = new Set([deletedId, ...failedIds].filter(Boolean));
+    if (invalidIds.size > 0) {
+      this.characterSelectionPreferences.ai = this.characterSelectionPreferences.ai.filter((id) => !invalidIds.has(id));
+      this.characterSelectionPreferences.local = this.characterSelectionPreferences.local.filter((id) => !invalidIds.has(id));
+      this.characterIds = this.characterIds.map((id) => invalidIds.has(id) ? "strolling-grandpa" : id);
+      for (const id of invalidIds) this.poseEditor.deleteCharacterData(id);
+      writeCharacterSelections(globalThis.localStorage, this.characterSelectionPreferences);
+    }
+    if (this.characterSelectionSession) {
+      const previousSession = this.characterSelectionSession;
+      const nextSession = new CharacterSelectionSession({
+        mode: previousSession.mode,
+        catalogIds: getAvailableCharacters().map((character) => character.id),
+        savedIds: previousSession.selections,
+      });
+      nextSession.playerIndex = previousSession.playerIndex;
+      this.characterSelectionSession = nextSession;
+      this.renderCharacterSelection();
+    }
+  }
+
+  selectImportedCharacter(character) {
+    if (!this.characterSelectionSession || !character) return;
+    this.characterSelectionSession.select(character.id);
+    this.characterAssets.load(character.id);
+    this.renderCharacterSelection();
+    this.status.textContent = `${character.name} 已保存到此浏览器`;
+    this.statusResetAt = performance.now() + 1600;
+  }
+
+  async exportSelectedCustomCharacter() {
+    const id = this.characterSelectionSession?.activeId;
+    if (!id || !isCustomCharacter(id)) return;
+    try {
+      await this.customCharacterImport.export(id);
+      this.status.textContent = "角色包已导出";
+    } catch (error) {
+      this.status.textContent = error.message;
+    }
+    this.statusResetAt = performance.now() + 1600;
+  }
+
+  async deleteSelectedCustomCharacter() {
+    const id = this.characterSelectionSession?.activeId;
+    if (!id || !isCustomCharacter(id)) return;
+    try {
+      await this.customCharacterImport.delete(id);
+    } catch (error) {
+      this.status.textContent = error.message;
+      this.statusResetAt = performance.now() + 1600;
+    }
   }
 
   confirmCharacterSelection() {
@@ -746,7 +864,15 @@ export class Game {
 
   finishPoseEditing({ pose }) {
     if (this.activePosePlayerIndex === null) return;
-    this.customPoses[this.activePosePlayerIndex] = pose ? { ...pose } : null;
+    const playerIndex = this.activePosePlayerIndex;
+    this.customPoses[playerIndex] = pose ? { ...pose } : null;
+    const characterId = this.characterIds[playerIndex];
+    if (pose && isCustomCharacter(characterId)) {
+      this.customCharacterImport.savePose(characterId, pose).catch(() => {
+        this.status.textContent = "Pose 已用于本局，但未能写入自定义角色仓库";
+        this.statusResetAt = performance.now() + 1600;
+      });
+    }
     this.openNextPoseEditor();
   }
 

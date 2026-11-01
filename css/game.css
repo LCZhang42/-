@@ -563,6 +563,7 @@ kbd small {
 .boot-overlay,
 .start-overlay,
 .character-select-overlay,
+.custom-character-overlay,
 .pose-editor-overlay,
 .tutorial-overlay,
 .settings-overlay {
@@ -608,6 +609,7 @@ kbd small {
 .boot-overlay[hidden],
 .start-overlay[hidden],
 .character-select-overlay[hidden],
+.custom-character-overlay[hidden],
 .pose-editor-overlay[hidden],
 .tutorial-overlay[hidden],
 .settings-overlay[hidden] {
@@ -889,7 +891,7 @@ kbd small {
 
 .character-roster {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: clamp(5px, 0.65vw, 10px);
 }
 
@@ -1063,9 +1065,205 @@ kbd small {
 
 .select-actions {
   display: grid;
-  grid-template-columns: auto minmax(240px, 0.42fr);
+  grid-template-columns: repeat(4, auto) minmax(240px, 0.42fr);
   justify-content: end;
   gap: 0.7em;
+}
+
+.custom-character-overlay {
+  position: absolute;
+  z-index: 65;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 2%;
+  background:
+    radial-gradient(circle at 25% 45%, rgb(246 223 113 / 12%), transparent 38%),
+    linear-gradient(120deg, rgb(5 7 10 / 98%), rgb(18 21 26 / 96%));
+}
+
+.custom-character-card {
+  display: grid;
+  width: min(94%, 1120px);
+  max-height: 96%;
+  overflow: auto;
+  gap: 14px;
+  padding: clamp(14px, 2vw, 28px);
+  box-sizing: border-box;
+  border: 1px solid rgb(246 223 113 / 34%);
+  border-radius: 20px;
+  background: rgb(12 14 18 / 97%);
+  box-shadow: 0 28px 90px rgb(0 0 0 / 58%);
+}
+
+.custom-character-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.custom-character-heading span {
+  display: block;
+  color: #a7a298;
+  font: 700 11px/1.2 ui-monospace, Consolas, monospace;
+  letter-spacing: 0.18em;
+}
+
+.custom-character-heading strong {
+  display: block;
+  margin-top: 4px;
+  color: #f4ebdc;
+  font-size: clamp(20px, 2.4vw, 34px);
+}
+
+.custom-character-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(420px, 1.25fr);
+  gap: clamp(14px, 2vw, 28px);
+  min-height: 0;
+}
+
+.custom-preview-column {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+#custom-character-canvas {
+  width: min(100%, 420px);
+  max-height: 62vh;
+  aspect-ratio: 3 / 4;
+  justify-self: center;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 14px;
+  background: #181a1f;
+  touch-action: none;
+}
+
+#custom-character-status {
+  min-height: 2.4em;
+  margin: 0;
+  color: #a8c6ab;
+  text-align: center;
+  font-size: 12px;
+}
+
+#custom-character-status.is-error { color: #ff8f7a; }
+
+.custom-character-tools {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.custom-character-tools section {
+  padding: 12px 14px;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 3%);
+}
+
+.custom-character-tools h3 {
+  margin: 0 0 9px;
+  color: #f6df71;
+  font-size: 14px;
+}
+
+.custom-character-tools small { color: #928e86; line-height: 1.45; }
+.custom-character-tools input[type="text"],
+.custom-character-tools input:not([type]) {
+  width: 100%;
+}
+
+.file-button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border: 1px solid #f6df71;
+  border-radius: 8px;
+  background: #f6df71;
+  color: #17130b;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.file-button--quiet {
+  border-color: rgb(255 255 255 / 16%);
+  background: #24272d;
+  color: #eee7dc;
+}
+
+.file-button input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+
+.custom-transform-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 14px;
+  margin: 10px 0;
+}
+
+.custom-transform-grid label {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  align-items: center;
+  gap: 6px;
+  color: #bcb6aa;
+  font-size: 12px;
+}
+
+.custom-mode-options { display: flex; gap: 18px; color: #ded7ca; font-size: 13px; }
+.custom-joint-guide { margin-top: 10px; }
+.custom-joint-guide p { margin: 4px 0 8px; color: #9c978d; font-size: 11px; }
+.custom-joint-guide button { margin-right: 6px; }
+
+.custom-joint-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 8px 0;
+}
+
+.custom-joint-list span {
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #292c32;
+  color: #777b82;
+  font-size: 9px;
+}
+
+.custom-joint-list span.is-active { background: #f6df71; color: #17130b; }
+.custom-joint-list span.is-done { background: #335b46; color: #c9f0d7; }
+
+.custom-save-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 9px 0;
+}
+
+.custom-character-card button,
+.custom-character-tools input[type="text"],
+#custom-character-name {
+  min-height: 34px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 8px;
+  background: #24272d;
+  color: #eee7dc;
+}
+
+.custom-character-card .primary-action { background: #f6df71; color: #17130b; font-weight: 800; }
+
+@media (max-width: 820px) {
+  .custom-character-grid { grid-template-columns: 1fr; }
+  #custom-character-canvas { max-height: 45vh; }
+  .custom-character-card { width: 98%; padding: 10px; }
+  .select-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .select-actions .primary-action { grid-column: 1 / -1; }
 }
 
 .select-actions button {
@@ -1466,8 +1664,8 @@ kbd small {
 
 .outcome-card {
   display: grid;
-  min-width: 38%;
-  padding: 4% 6%;
+  width: min(68%, 880px);
+  padding: 2.2% 3.5%;
   border: 1px solid rgb(255 225 129 / 28%);
   border-radius: 20px;
   background: linear-gradient(145deg, rgb(40 25 21 / 96%), rgb(12 14 19 / 96%));
@@ -1486,15 +1684,24 @@ kbd small {
   margin-top: 0.12em;
   color: #ffe375;
   font-family: "STKaiti", "KaiTi", serif;
-  font-size: clamp(40px, 6vw, 94px);
+  font-size: clamp(34px, 4.6vw, 72px);
   text-shadow: 0 0 28px rgb(255 202 73 / 35%);
 }
 
 .outcome-card p {
-  margin: 0.2em 0 1em;
+  margin: 0.3em 0 0.7em;
   color: #efe6d8;
   font-family: ui-monospace, Consolas, monospace;
   font-size: clamp(12px, 1.4vw, 22px);
+}
+
+#outcome-canvas {
+  width: 100%;
+  max-height: 38vh;
+  margin: 0.2em auto 0;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 13px;
+  background: rgb(4 6 9 / 58%);
 }
 
 .pause-overlay[hidden] {

@@ -1,5 +1,8 @@
 import { DOLL_EXPRESSIONS, GRANDPA_CHARACTER, getCharacter, getCharacterPose } from "../characters/CharacterCatalog.js";
+import { resolveDollAnimation } from "./DollAnimation.js";
 import { resolveDollSkeleton } from "./Skeleton2D.js";
+
+const customImageCache = new Map();
 
 export function resolveDollExpression(player, scene, playerIndex) {
   const outcome = scene.combat.outcome;
@@ -16,39 +19,56 @@ export class DollRenderer {
     this.character = character;
   }
 
-  draw(ctx, player, scene, { drawOffsetY = -92 } = {}) {
+  draw(ctx, player, scene, {
+    drawOffsetY = -92,
+    rotation = 0,
+    scale = 0.9,
+    showAura = true,
+    showLabel = true,
+    showShadow = true,
+    forceExpression = null,
+  } = {}) {
     const playerIndex = scene.players.findIndex((candidate) => candidate.id === player.id);
     this.character = getCharacter(scene.characterIds?.[playerIndex]);
     const pose = scene.customPoses?.[playerIndex]
       ?? getCharacterPose(this.character, scene.poseIndexes?.[playerIndex] ?? scene.grandpaPoseIndex);
     const speed = Math.hypot(player.velocityX, player.velocityY);
     const stride = Math.sin(scene.time * 12.5) * Math.min(1, speed / 150);
-    const isCallout = scene.combat.state === "CALLOUT" && player.role === "attacker";
-    const expression = resolveDollExpression(player, scene, playerIndex);
+    const expression = forceExpression ?? resolveDollExpression(player, scene, playerIndex);
     const facing = player.facingX || (player.id === "P1" ? 1 : -1);
-    const focusReach = player.role === "attacker" && scene.lock.isFocusing
-      ? 9 + scene.lock.progress * 23
-      : 0;
+    const action = resolveDollAnimation(player, scene, playerIndex, pose);
     const skeleton = resolveDollSkeleton(pose, {
-      lean: scene.lock.isFocusing && player.role === "attacker" ? 0.13 * Math.sign(facing) : 0,
-      headX: expression === "shock" ? -2 : Math.sin(scene.time * 2.1) * 1.5,
-      headY: expression === "shock" ? -5 : 0,
+      lean: action.lean,
+      headX: action.headX,
+      headY: expression === "shock" ? action.headY - 3 : action.headY,
       stride,
-      armSwing: stride * 0.12,
-      reach: focusReach + (isCallout ? 22 : 0),
+      armSwing: stride * 0.12 + action.armSwing,
+      reach: action.reach,
+      jointOffsets: action.jointOffsets,
     });
 
     ctx.save();
     ctx.translate(player.x, player.y + drawOffsetY - Math.abs(stride) * 2);
-    ctx.scale(0.9, 0.9);
-    this.drawAura(ctx, player, scene.time);
+    ctx.rotate(rotation + action.rotation);
+    ctx.scale(scale, scale);
+    if (showAura) this.drawAura(ctx, player, scene.time);
     this.drawDashTrail(ctx, player, skeleton, scene.lowEffects);
-    this.drawShadow(ctx);
-    this.drawLegs(ctx, skeleton, stride);
-    this.drawArms(ctx, skeleton);
-    this.drawTorso(ctx, skeleton);
-    this.drawHead(ctx, skeleton.head, expression, facing);
-    this.drawRoleLabel(ctx, player, pose, expression);
+    if (showShadow) this.drawShadow(ctx);
+    const customImage = this.character.customAsset ? getCustomImage(this.character.conceptPath) : null;
+    if (customImage?.complete && customImage.naturalWidth > 0) {
+      if (this.character.customAsset.mode === "jointed") {
+        this.drawCustomJointed(ctx, customImage, skeleton, this.character.customAsset.joints);
+      } else {
+        this.drawCustomPaper(ctx, customImage, action, stride);
+      }
+      this.drawCustomExpressionBadge(ctx, expression);
+    } else {
+      this.drawLegs(ctx, skeleton, stride);
+      this.drawArms(ctx, skeleton);
+      this.drawTorso(ctx, skeleton);
+      this.drawHead(ctx, skeleton.head, expression, facing);
+    }
+    if (showLabel) this.drawRoleLabel(ctx, player, pose, expression);
 
     if (player.isLockImmune) {
       ctx.strokeStyle = "rgba(255,255,255,.72)";
@@ -84,7 +104,7 @@ export class DollRenderer {
   drawDashTrail(ctx, player, skeleton, lowEffects) {
     if (!player.isDashing) return;
     ctx.save();
-    ctx.globalAlpha = lowEffects ? 0.12 : 0.2;
+    ctx.globalAlpha = lowEffects ? 0.065 : 0.2;
     ctx.fillStyle = player.color;
     ctx.beginPath();
     ctx.ellipse(-player.facingX * 32, -55, 40, 82, -0.08, 0, Math.PI * 2);
@@ -97,6 +117,52 @@ export class DollRenderer {
     ctx.beginPath();
     ctx.ellipse(0, 42, 57, 14, 0, 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  drawCustomPaper(ctx, image, action, stride) {
+    const height = 188 * (1 + Math.abs(stride) * 0.025);
+    const width = height * image.naturalWidth / image.naturalHeight;
+    ctx.save();
+    ctx.translate(action.reach * 0.09, -55 + action.headY * 0.12);
+    ctx.rotate(action.lean * 0.72);
+    ctx.scale(1 + action.reach * 0.0015, 1 - Math.abs(action.reach) * 0.0005);
+    ctx.drawImage(image, -width / 2, -height / 2, width, height);
+    ctx.restore();
+  }
+
+  drawCustomJointed(ctx, image, skeleton, joints) {
+    const source = Object.fromEntries(Object.entries(joints).map(([id, point]) => [id, {
+      x: point.x * image.naturalWidth,
+      y: point.y * image.naturalHeight,
+    }]));
+    const segments = [
+      ["leftHip", "leftKnee"], ["leftKnee", "leftAnkle"],
+      ["rightHip", "rightKnee"], ["rightKnee", "rightAnkle"],
+      ["leftShoulder", "leftElbow"], ["leftElbow", "leftWrist"],
+      ["rightShoulder", "rightElbow"], ["rightElbow", "rightWrist"],
+    ];
+    for (const [start, end] of segments.slice(0, 4)) {
+      drawMappedSegment(ctx, image, source[start], source[end], skeleton[start], skeleton[end]);
+    }
+    drawMappedTorso(ctx, image, source, skeleton);
+    for (const [start, end] of segments.slice(4)) {
+      drawMappedSegment(ctx, image, source[start], source[end], skeleton[start], skeleton[end]);
+    }
+    drawMappedHead(ctx, image, source, skeleton);
+  }
+
+  drawCustomExpressionBadge(ctx, expression) {
+    const labels = { neutral: "麻木", focus: "用力", shock: "震惊", shout: "喊！", triumph: "看淡", hurt: "错位" };
+    ctx.save();
+    ctx.fillStyle = expression === "hurt" ? "#ff775f" : expression === "triumph" ? "#9fe784" : "rgba(18,20,24,.82)";
+    roundedRect(ctx, 24, -144, 42, 20, 8);
+    ctx.fill();
+    ctx.fillStyle = expression === "hurt" || expression === "triumph" ? "#14150f" : "#f2eadb";
+    ctx.font = "800 10px 'Microsoft YaHei UI', sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(labels[expression] ?? "麻木", 45, -134);
+    ctx.restore();
   }
 
   drawLegs(ctx, s, stride) {
@@ -382,6 +448,101 @@ export class DollRenderer {
       ctx.fill();
     }
   }
+}
+
+function getCustomImage(path) {
+  if (customImageCache.has(path)) return customImageCache.get(path);
+  const image = new Image();
+  image.decoding = "async";
+  image.src = path;
+  customImageCache.set(path, image);
+  return image;
+}
+
+function drawMappedSegment(ctx, image, sourceStart, sourceEnd, targetStart, targetEnd) {
+  if (!sourceStart || !sourceEnd || !targetStart || !targetEnd) return;
+  const sourceLength = Math.hypot(sourceEnd.x - sourceStart.x, sourceEnd.y - sourceStart.y);
+  const targetLength = Math.hypot(targetEnd.x - targetStart.x, targetEnd.y - targetStart.y);
+  if (sourceLength < 2 || targetLength < 2) return;
+  const sourceAngle = Math.atan2(sourceEnd.y - sourceStart.y, sourceEnd.x - sourceStart.x);
+  const targetAngle = Math.atan2(targetEnd.y - targetStart.y, targetEnd.x - targetStart.x);
+  const scale = targetLength / sourceLength;
+  const angle = targetAngle - sourceAngle;
+  const cos = Math.cos(angle) * scale;
+  const sin = Math.sin(angle) * scale;
+  const e = targetStart.x - cos * sourceStart.x + sin * sourceStart.y;
+  const f = targetStart.y - sin * sourceStart.x - cos * sourceStart.y;
+  const halfWidth = Math.max(22, image.naturalWidth * 0.065);
+  const dx = (sourceEnd.x - sourceStart.x) / sourceLength;
+  const dy = (sourceEnd.y - sourceStart.y) / sourceLength;
+  const px = -dy * halfWidth;
+  const py = dx * halfWidth;
+  ctx.save();
+  ctx.transform(cos, sin, -sin, cos, e, f);
+  ctx.beginPath();
+  ctx.moveTo(sourceStart.x + px, sourceStart.y + py);
+  ctx.lineTo(sourceEnd.x + px, sourceEnd.y + py);
+  ctx.lineTo(sourceEnd.x - px, sourceEnd.y - py);
+  ctx.lineTo(sourceStart.x - px, sourceStart.y - py);
+  ctx.closePath();
+  ctx.clip();
+  ctx.drawImage(image, 0, 0);
+  ctx.restore();
+}
+
+function drawMappedTorso(ctx, image, source, target) {
+  const sourceShoulders = midpoint(source.leftShoulder, source.rightShoulder);
+  const sourceHips = midpoint(source.leftHip, source.rightHip);
+  const targetShoulders = target.chest;
+  const targetHips = target.hips;
+  drawMappedPolygon(ctx, image, sourceShoulders, sourceHips, targetShoulders, targetHips, [
+    source.leftShoulder, source.rightShoulder, source.rightHip, source.leftHip,
+  ]);
+}
+
+function drawMappedHead(ctx, image, source, target) {
+  const sourceShoulders = midpoint(source.leftShoulder, source.rightShoulder);
+  const targetShoulders = target.chest;
+  const shoulderWidth = Math.hypot(
+    source.rightShoulder.x - source.leftShoulder.x,
+    source.rightShoulder.y - source.leftShoulder.y,
+  );
+  const radius = Math.max(32, shoulderWidth * 0.72);
+  drawMappedPolygon(ctx, image, sourceShoulders, source.head, targetShoulders, target.head, circlePolygon(source.head, radius, 20));
+}
+
+function drawMappedPolygon(ctx, image, sourceStart, sourceEnd, targetStart, targetEnd, polygon) {
+  if (!sourceStart || !sourceEnd || !targetStart || !targetEnd || polygon.some((point) => !point)) return;
+  const sourceLength = Math.hypot(sourceEnd.x - sourceStart.x, sourceEnd.y - sourceStart.y);
+  const targetLength = Math.hypot(targetEnd.x - targetStart.x, targetEnd.y - targetStart.y);
+  if (sourceLength < 2 || targetLength < 2) return;
+  const angle = Math.atan2(targetEnd.y - targetStart.y, targetEnd.x - targetStart.x)
+    - Math.atan2(sourceEnd.y - sourceStart.y, sourceEnd.x - sourceStart.x);
+  const scale = targetLength / sourceLength;
+  const cos = Math.cos(angle) * scale;
+  const sin = Math.sin(angle) * scale;
+  const e = targetStart.x - cos * sourceStart.x + sin * sourceStart.y;
+  const f = targetStart.y - sin * sourceStart.x - cos * sourceStart.y;
+  ctx.save();
+  ctx.transform(cos, sin, -sin, cos, e, f);
+  ctx.beginPath();
+  polygon.forEach((point, index) => index ? ctx.lineTo(point.x, point.y) : ctx.moveTo(point.x, point.y));
+  ctx.closePath();
+  ctx.clip();
+  ctx.drawImage(image, 0, 0);
+  ctx.restore();
+}
+
+function midpoint(left, right) {
+  if (!left || !right) return null;
+  return { x: (left.x + right.x) / 2, y: (left.y + right.y) / 2 };
+}
+
+function circlePolygon(center, radius, count) {
+  return Array.from({ length: count }, (_, index) => {
+    const angle = index / count * Math.PI * 2;
+    return { x: center.x + Math.cos(angle) * radius, y: center.y + Math.sin(angle) * radius };
+  });
 }
 
 function roundedRect(ctx, x, y, width, height, radius) {

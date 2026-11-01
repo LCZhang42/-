@@ -6,6 +6,7 @@ export function pointFrom(origin, length, angle) {
 }
 
 export function resolveDollSkeleton(pose, animation = {}) {
+  const jointOffsets = animation.jointOffsets ?? {};
   const lean = pose.lean + (animation.lean ?? 0);
   const hips = { x: 0, y: -8 };
   const chest = { x: Math.sin(lean) * 55, y: -63 };
@@ -20,14 +21,14 @@ export function resolveDollSkeleton(pose, animation = {}) {
   const armSwing = animation.armSwing ?? 0;
   const reach = animation.reach ?? 0;
 
-  const leftElbow = pointFrom(leftShoulder, 49, pose.leftUpperArm + armSwing);
-  const rightElbow = pointFrom(rightShoulder, 49 + reach * 0.25, pose.rightUpperArm - armSwing);
-  const leftWrist = pointFrom(leftElbow, 48, pose.leftForearm + armSwing * 0.65);
-  const rightWrist = pointFrom(rightElbow, 48 + reach, pose.rightForearm - armSwing * 0.65);
-  const leftKnee = pointFrom(leftHip, 52, pose.leftThigh + stride * 0.08);
-  const rightKnee = pointFrom(rightHip, 52, pose.rightThigh - stride * 0.08);
-  const leftAnkle = pointFrom(leftKnee, 50, pose.leftShin - stride * 0.11);
-  const rightAnkle = pointFrom(rightKnee, 50, pose.rightShin + stride * 0.11);
+  const leftElbow = pointFrom(leftShoulder, 49, pose.leftUpperArm + armSwing + (jointOffsets.leftUpperArm ?? 0));
+  const rightElbow = pointFrom(rightShoulder, 49 + reach * 0.25, pose.rightUpperArm - armSwing + (jointOffsets.rightUpperArm ?? 0));
+  const leftWrist = pointFrom(leftElbow, 48, pose.leftForearm + armSwing * 0.65 + (jointOffsets.leftForearm ?? 0));
+  const rightWrist = pointFrom(rightElbow, 48 + reach, pose.rightForearm - armSwing * 0.65 + (jointOffsets.rightForearm ?? 0));
+  const leftKnee = pointFrom(leftHip, 52, pose.leftThigh + stride * 0.08 + (jointOffsets.leftThigh ?? 0));
+  const rightKnee = pointFrom(rightHip, 52, pose.rightThigh - stride * 0.08 + (jointOffsets.rightThigh ?? 0));
+  const leftAnkle = pointFrom(leftKnee, 50, pose.leftShin - stride * 0.11 + (jointOffsets.leftShin ?? 0));
+  const rightAnkle = pointFrom(rightKnee, 50, pose.rightShin + stride * 0.11 + (jointOffsets.rightShin ?? 0));
 
   return {
     hips,

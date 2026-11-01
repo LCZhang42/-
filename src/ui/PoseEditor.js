@@ -40,7 +40,7 @@ export class PoseEditor {
     this.characterId = characterId;
     this.playerIndex = playerIndex;
     const record = getCharacterPoseRecord(this.library, characterId);
-    this.currentPose = clonePose(record.lastPose ?? STANDARD_POSES[0]);
+    this.currentPose = clonePose(record.lastPose ?? getCharacter(characterId).customAsset?.lastPose ?? STANDARD_POSES[0]);
     this.basePose = clonePose(this.currentPose);
     this.selectedSlotIndex = Math.max(0, record.slots.findIndex((slot) => !slot));
     this.pendingOverwrite = null;
@@ -58,6 +58,12 @@ export class PoseEditor {
   close() {
     this.draggingJointId = null;
     this.elements.overlay.hidden = true;
+  }
+
+  deleteCharacterData(characterId) {
+    if (!characterId || !this.library[characterId]) return;
+    delete this.library[characterId];
+    writePoseLibrary(this.storage, this.library);
   }
 
   bindControls() {
