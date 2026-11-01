@@ -1,0 +1,19 @@
+name = "shoushu-character-share"
+main = "share-worker.js"
+compatibility_date = "2026-11-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "shoushu-character-share"
+database_id = "replace-with-d1-database-id"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "shoushu-character-assets"
+
+[vars]
+SHARE_ORIGIN = "https://your-game.example"
+ALLOW_ANONYMOUS_UPLOADS = "false"
+
+# IP_HASH_SALT and MODERATOR_TOKEN are secrets. Configure them with the hosting
+# platform or `wrangler secret put`; never add their real values to this file.

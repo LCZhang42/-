@@ -84,6 +84,19 @@ export class CustomCharacterImport {
     downloadBlob(new Blob([text], { type: "application/json" }), `${safeName(record.name)}.shoushu.json`);
   }
 
+  getRecord(id) {
+    return this.records.get(id) ?? null;
+  }
+
+  async importSharedPackage(packageData) {
+    const record = await exportPackageToRecord(JSON.stringify(packageData));
+    const saved = await this.store.put(record);
+    const character = this.register(saved);
+    this.onCatalogChanged({ addedId: saved.id });
+    this.onSaved(character);
+    return character;
+  }
+
   async savePose(id, pose) {
     const saved = await this.store.savePose(id, pose);
     if (!saved) return false;

@@ -8,7 +8,7 @@
       name="description"
       content="《寿数回战》浏览器双人反应游戏原型"
     />
-    <title>寿数回战 · 美术扩展 A5</title>
+    <title>寿数回战 · 美术扩展 A6</title>
     <link rel="modulepreload" href="./src/core/Game.js" />
     <link rel="stylesheet" href="./css/game.css" />
   </head>
@@ -27,7 +27,7 @@
             <span class="eyebrow">BROWSER PROTOTYPE</span>
             <h1>寿数回战</h1>
           </div>
-          <div class="status-pill" id="game-status">美术扩展 A5 · 本地自定义角色</div>
+          <div class="status-pill" id="game-status">美术扩展 A6 · 可选未公开分享</div>
         </header>
 
         <section class="match-hud" aria-label="对局状态">
@@ -100,7 +100,7 @@
 
         <div class="start-overlay" id="start-overlay" hidden>
           <section class="start-card" aria-labelledby="start-title">
-            <span class="menu-kicker">SOLO & LOCAL DUEL · <b id="game-version">v0.14.0</b></span>
+            <span class="menu-kicker">SOLO & LOCAL DUEL · <b id="game-version">v0.15.0</b></span>
             <h2 id="start-title">寿数回战</h2>
             <p>一个人也能开打。挑战会走位、会回寿、偶尔也会犯错的青寿 AI，或者邀请朋友同键盘对战。</p>
             <div class="art-proof art-proof--roster" aria-label="A3 老鼠干角色阵容与 Pose 编辑">
@@ -111,7 +111,7 @@
                 <span style="--swatch:#b57a28">姐</span>
                 <span style="--swatch:#817d77">青</span>
               </div>
-              <p><b>A5 把自己的老鼠干带进来</b><span>PNG/WebP 只在浏览器本地处理，标完关节就能摆 Pose 开打。</span></p>
+              <p><b>A6 未公开分享</b><span>本地老鼠干可以生成分享码；服务器离线时，本地角色和对局照常使用。</span></p>
             </div>
             <div class="menu-actions">
               <button type="button" class="primary-action" id="start-ai">单人 vs AI</button>
@@ -157,8 +157,65 @@
               <button type="button" id="custom-character-open">＋ 导入本地角色</button>
               <button type="button" id="custom-character-export" hidden>导出角色包</button>
               <button type="button" id="custom-character-delete" hidden>彻底删除</button>
+              <button type="button" id="custom-character-share" hidden>生成分享码</button>
+              <button type="button" id="custom-character-receive">输入分享码</button>
               <button type="button" class="primary-action" id="character-select-confirm">确认角色并开局</button>
             </div>
+          </section>
+        </div>
+
+        <div class="character-share-overlay" id="character-share-overlay" hidden>
+          <section class="character-share-card" aria-labelledby="character-share-title">
+            <header class="character-share-heading">
+              <div>
+                <span>OPTIONAL ONLINE SHARE · 未公开代码</span>
+                <strong id="character-share-title">跨设备带走一具老鼠干</strong>
+              </div>
+              <button type="button" id="character-share-close">返回选角</button>
+            </header>
+            <p id="character-share-status" aria-live="polite">本地角色功能不依赖分享服务器。</p>
+            <div class="character-share-layout">
+              <section id="character-share-panel">
+                <h3>生成分享码</h3>
+                <p>只上传 A5 已重新编码的纹理、角色名、关节点和 Pose；不会上传原始文件或其元数据。</p>
+                <div class="share-declarations">
+                  <label><input id="share-rights" type="checkbox" /> 我拥有图片版权，或已获得作者与肖像人物明确许可。</label>
+                  <label><input id="share-minor-safety" type="checkbox" /> 图片不包含未经监护人同意的未成年人，也不是偷拍路人或私人照片。</label>
+                  <label><input id="share-privacy" type="checkbox" /> 我理解拿到代码的人可以下载副本，并可对违规内容举报。</label>
+                </div>
+                <button type="button" class="primary-action" id="character-share-upload">确认并生成未公开代码</button>
+                <div class="share-result" id="character-share-result" hidden>
+                  <b id="character-share-result-state">未公开分享已建立</b>
+                  <div><input id="character-share-code" readonly /><button type="button" id="character-share-copy">复制代码</button></div>
+                  <button type="button" class="danger-action" id="character-share-delete">删除云端分享</button>
+                </div>
+              </section>
+              <section id="character-receive-panel">
+                <h3>输入分享码</h3>
+                <p>读取不会自动保存。确认预览后，副本才会写入此浏览器的 IndexedDB。</p>
+                <div class="share-code-entry"><input id="character-receive-code" maxlength="32" placeholder="例如 8f3a12bc90de" /><button type="button" id="character-share-lookup">读取</button></div>
+                <div class="share-preview" id="character-share-preview" hidden>
+                  <img id="character-share-preview-image" alt="分享角色预览" />
+                  <div><strong id="character-share-preview-name"></strong><span id="character-share-preview-mode"></span></div>
+                  <button type="button" class="primary-action" id="character-share-import">保存到本地并选中</button>
+                  <label>举报原因
+                    <select id="character-share-report-reason">
+                      <option value="copyright">版权侵权</option><option value="portrait">未经许可的肖像</option>
+                      <option value="minor">未成年人隐私</option><option value="sexual">色情内容</option>
+                      <option value="violent">暴力或血腥</option><option value="hate">仇恨内容</option>
+                      <option value="spam">垃圾内容</option><option value="other">其他违规</option>
+                    </select>
+                  </label>
+                  <button type="button" class="danger-action" id="character-share-report">举报此分享</button>
+                </div>
+              </section>
+            </div>
+            <details class="share-service-settings">
+              <summary>开发者设置 · 分享服务地址</summary>
+              <p>正式版本应在 <code>GAME_CONFIG.shareApiBase</code> 固定 HTTPS 地址。这里保存的地址只作用于当前浏览器。</p>
+              <div><input id="character-share-endpoint" placeholder="https://share.example.com" /><button type="button" id="character-share-save-endpoint">保存地址</button></div>
+            </details>
+            <small class="share-privacy-note">服务端按账号限制每日 5 次、8 MB，分享 30 天过期；同一访问者对同一内容只计一次举报，达到阈值自动隔离。在线分享关闭时，A5 本地角色和 Pose 不受影响。</small>
           </section>
         </div>
 

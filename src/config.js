@@ -1,7 +1,8 @@
 export const GAME_CONFIG = Object.freeze({
   title: "寿数回战",
-  version: "0.14.0",
-  stageLabel: "美术扩展 A5 · 本地自定义角色",
+  version: "0.15.0",
+  stageLabel: "美术扩展 A6 · 可选未公开分享",
+  shareApiBase: "",
   logicalWidth: 1280,
   logicalHeight: 720,
   fixedTimeStep: 1 / 60,

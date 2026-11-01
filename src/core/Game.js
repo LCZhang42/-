@@ -32,6 +32,7 @@ import { MatchStats } from "../game/MatchStats.js";
 import { Player } from "../game/Player.js";
 import { CanvasRenderer } from "../rendering/CanvasRenderer.js";
 import { DebugOverlay } from "../ui/DebugOverlay.js";
+import { CharacterShareDialog } from "../ui/CharacterShareDialog.js";
 import { CustomCharacterImport } from "../ui/CustomCharacterImport.js";
 import { PoseEditor } from "../ui/PoseEditor.js";
 import { GameLoop } from "./GameLoop.js";
@@ -87,6 +88,31 @@ export class Game {
     customJointReset,
     customCharacterName,
     customCharacterSave,
+    characterShareOverlay,
+    characterShareClose,
+    characterShareStatus,
+    characterSharePanel,
+    characterReceivePanel,
+    characterShareRights,
+    characterShareMinorSafety,
+    characterSharePrivacy,
+    characterShareUpload,
+    characterShareResult,
+    characterShareResultState,
+    characterShareCode,
+    characterShareCopy,
+    characterShareDelete,
+    characterReceiveCode,
+    characterShareLookup,
+    characterSharePreview,
+    characterSharePreviewImage,
+    characterSharePreviewName,
+    characterSharePreviewMode,
+    characterShareImport,
+    characterShareReportReason,
+    characterShareReport,
+    characterShareEndpoint,
+    characterShareSaveEndpoint,
     poseEditorOverlay,
     poseEditorCanvas,
     poseEditorTitle,
@@ -180,6 +206,8 @@ export class Game {
       customOpen: customCharacterOpen,
       customExport: customCharacterExport,
       customDelete: customCharacterDelete,
+      customShare: customCharacterShare,
+      customReceive: customCharacterReceive,
     };
     this.customCharacterImport = new CustomCharacterImport({
       overlay: customCharacterOverlay,
@@ -205,6 +233,37 @@ export class Game {
       onSaved: (character) => this.selectImportedCharacter(character),
     });
     this.customCharacterImport.init();
+    this.characterShareDialog = new CharacterShareDialog({
+      overlay: characterShareOverlay,
+      close: characterShareClose,
+      status: characterShareStatus,
+      sharePanel: characterSharePanel,
+      receivePanel: characterReceivePanel,
+      rights: characterShareRights,
+      minorSafety: characterShareMinorSafety,
+      privacy: characterSharePrivacy,
+      upload: characterShareUpload,
+      result: characterShareResult,
+      resultState: characterShareResultState,
+      code: characterShareCode,
+      copy: characterShareCopy,
+      deleteShare: characterShareDelete,
+      receiveCode: characterReceiveCode,
+      lookup: characterShareLookup,
+      preview: characterSharePreview,
+      previewImage: characterSharePreviewImage,
+      previewName: characterSharePreviewName,
+      previewMode: characterSharePreviewMode,
+      import: characterShareImport,
+      reportReason: characterShareReportReason,
+      report: characterShareReport,
+      endpoint: characterShareEndpoint,
+      saveEndpoint: characterShareSaveEndpoint,
+    }, {
+      customCharacters: this.customCharacterImport,
+      getSelectedId: () => this.characterSelectionSession?.activeId ?? null,
+      onImported: (character) => this.selectImportedCharacter(character),
+    });
     this.characterSelectionSession = null;
     this.characterSelectionPreferences = readCharacterSelections(globalThis.localStorage);
     this.pendingMatch = null;
@@ -641,6 +700,8 @@ export class Game {
     this.characterSelect.customOpen.addEventListener("click", () => this.customCharacterImport.open());
     this.characterSelect.customExport.addEventListener("click", () => this.exportSelectedCustomCharacter());
     this.characterSelect.customDelete.addEventListener("click", () => this.deleteSelectedCustomCharacter());
+    this.characterSelect.customShare.addEventListener("click", () => this.characterShareDialog.open("share"));
+    this.characterSelect.customReceive.addEventListener("click", () => this.characterShareDialog.open("receive"));
     this.pauseActions.resume.addEventListener("click", () => this.togglePause(false));
     this.pauseActions.restart.addEventListener("click", () => this.resetRound());
     this.pauseActions.settings.addEventListener("click", () => this.openSettings());
@@ -685,6 +746,8 @@ export class Game {
     this.pendingMatch = null;
     this.poseEditQueue = [];
     this.poseEditor.close();
+    this.customCharacterImport.close();
+    this.characterShareDialog.close();
     this.startMenu.overlay.hidden = true;
     this.characterSelect.overlay.hidden = false;
     this.pauseOverlay.hidden = true;
@@ -748,6 +811,7 @@ export class Game {
     const selectedIsCustom = isCustomCharacter(selected.id);
     this.characterSelect.customExport.hidden = !selectedIsCustom;
     this.characterSelect.customDelete.hidden = !selectedIsCustom;
+    this.characterSelect.customShare.hidden = !selectedIsCustom;
 
     const expressionData = [
       ["–_–", "麻木"],
@@ -906,6 +970,8 @@ export class Game {
     this.characterSelect.overlay.hidden = true;
     this.characterSelectionSession = null;
     this.poseEditor.close();
+    this.customCharacterImport.close();
+    this.characterShareDialog.close();
     this.pendingMatch = null;
     this.poseEditQueue = [];
     this.activePosePlayerIndex = null;
